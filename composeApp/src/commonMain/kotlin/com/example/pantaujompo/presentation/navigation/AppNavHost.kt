@@ -1,14 +1,9 @@
 package com.example.pantaujompo.presentation.navigation
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -19,89 +14,93 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 
-// Import SEMUA Layar Lo Di Sini
-import com.example.pantaujompo.presentation.screens.home.DashboardScreen
+// --- IMPORT LAYAR UI 2.0 MODERN KITA ---
+import com.example.pantaujompo.presentation.screens.home.BerandaScreen
 import com.example.pantaujompo.presentation.screens.pemindai.PemindaiScreen
-import com.example.pantaujompo.presentation.screens.riwayat.RiwayatScreen
+import com.example.pantaujompo.presentation.screens.olahraga.OlahragaScreen
+import com.example.pantaujompo.presentation.screens.olahraga.IndoorWorkoutScreen
+import com.example.pantaujompo.presentation.screens.olahraga.GpsTrackerScreen
 import com.example.pantaujompo.presentation.screens.artikel.ArtikelScreen
 import com.example.pantaujompo.presentation.screens.profil.ProfilScreen
 import com.example.pantaujompo.presentation.screens.addedit.AddEditActivityScreen
-
+import com.example.pantaujompo.presentation.theme.BackgroundDark
 
 @Composable
 fun AppNavHost(
     navController: NavHostController = rememberNavController(),
     modifier: Modifier = Modifier
 ) {
-    val bottomNavItems = listOf(
-        BottomNavItem("Beranda", Route.Beranda, Icons.Default.Home),
-        BottomNavItem("Pemindai", Route.Pemindai, Icons.Default.CameraAlt),
-        BottomNavItem("Riwayat", Route.Riwayat, Icons.Default.ListAlt),
-        BottomNavItem("Artikel", Route.Artikel, Icons.Default.Article),
-        BottomNavItem("Profil", Route.Profil, Icons.Default.Person)
-    )
-
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
-    // Bottom Bar hilang kalau lagi di layar Form
+    // Sembunyikan Navbar kalau lagi di Form, GPS Tracker, ATAU Indoor Workout
     val showBottomBar = currentDestination?.hierarchy?.any {
-        it.route?.contains("AddEditActivity") == true || it.route?.contains("ActivityDetail") == true
+        it.route?.contains("AddEditActivity") == true ||
+                it.route?.contains("ActivityDetail") == true ||
+                it.route?.contains("GpsTracker") == true ||
+                it.route?.contains("IndoorWorkout") == true
     } != true
 
     Scaffold(
+        containerColor = BackgroundDark, // <--- WAJIB GELAP BIAR KELIHATAN FUTURISTIK
         bottomBar = {
             if (showBottomBar) {
-                NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                    bottomNavItems.forEach { item ->
-                        val selected = currentDestination?.hierarchy?.any {
-                            it.route?.substringBefore("?") == item.route::class.qualifiedName
-                        } == true
-
-                        NavigationBarItem(
-                            selected = selected,
-                            onClick = {
-                                navController.navigate(item.route) {
-                                    popUpTo(navController.graph.findStartDestination().route!!) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = { Icon(item.icon, contentDescription = item.title) },
-                            label = { Text(item.title) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.onPrimary,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                                indicatorColor = MaterialTheme.colorScheme.primary
-                            )
-                        )
+                // INI NAVBAR KACA KITA BRAY!
+                FloatingGlassNavbar(
+                    currentRoute = currentDestination?.route?.substringAfterLast("."),
+                    onNavigate = { targetRoute ->
+                        val routeObj = when(targetRoute) {
+                            "Beranda" -> Route.Beranda
+                            "Olahraga" -> Route.Riwayat
+                            "Pemindai" -> Route.Pemindai
+                            "Statistik" -> Route.Artikel
+                            "Profil" -> Route.Profil
+                            else -> Route.Beranda
+                        }
+                        navController.navigate(routeObj) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
-                }
+                )
             }
         }
     ) { innerPadding ->
         NavHost(
             navController = navController,
             startDestination = Route.Beranda,
-            modifier = modifier.padding(innerPadding)
+            modifier = modifier.fillMaxSize() // Gak pake padding supaya layarnya full nabrak ke bawah navbar
         ) {
-            // 5 LAYAR UTAMA
-            composable<Route.Beranda> {
-                DashboardScreen(onNavigateToAdd = { navController.navigate(Route.AddEditActivity(null)) })
-            }
+            // --- 5 LAYAR UTAMA UI 2.0 ---
+            composable<Route.Beranda> { BerandaScreen() }
             composable<Route.Pemindai> { PemindaiScreen() }
 
-            // INI YANG TADI ERROR BRAY, UDAH GUE FIX!
+            // MENU WORKOUT HUB
             composable<Route.Riwayat> {
-                RiwayatScreen(
-                    onNavigateToEdit = { id -> navController.navigate(Route.AddEditActivity(id)) }
+                OlahragaScreen(
+                    onNavigateToGPS = { navController.navigate(Route.GpsTracker) },
+                    onNavigateToIndoor = { navController.navigate(Route.IndoorWorkout) }
                 )
             }
 
             composable<Route.Artikel> { ArtikelScreen() }
             composable<Route.Profil> { ProfilScreen() }
 
-            // LAYAR FORM TAMBAH/EDIT DATA
+            // --- LAYAR OLAHRAGA DETAIL ---
+            composable<Route.GpsTracker> {
+                GpsTrackerScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable<Route.IndoorWorkout> {
+                IndoorWorkoutScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            // --- LAYAR FORM ---
             composable<Route.AddEditActivity> { backStackEntry ->
                 val route: Route.AddEditActivity = backStackEntry.toRoute()
                 AddEditActivityScreen(
@@ -112,5 +111,3 @@ fun AppNavHost(
         }
     }
 }
-
-data class BottomNavItem(val title: String, val route: Route, val icon: androidx.compose.ui.graphics.vector.ImageVector)

@@ -14,4 +14,6 @@ sealed interface Route {
     // Rute tambahan untuk CRUD (Ini yang tadi ketinggalan bray!)
     @Serializable data class AddEditActivity(val id: Long? = null) : Route
     @Serializable data class DetailRiwayat(val id: Long) : Route
+    @Serializable data object GpsTracker
+    @Serializable data object IndoorWorkout
 }

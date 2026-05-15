@@ -13,7 +13,7 @@ import com.example.pantaujompo.domain.repository.ActivityRepository
 // Import ViewModels
 import com.example.pantaujompo.presentation.screens.profil.ProfilViewModel
 import com.example.pantaujompo.presentation.screens.addedit.AddEditViewModel
-import com.example.pantaujompo.presentation.screens.riwayat.RiwayatViewModel
+import com.example.pantaujompo.presentation.screens.olahraga.OlahragaScreen
 import com.example.pantaujompo.presentation.screens.home.DashboardViewModel
 
 import org.koin.core.context.startKoin
@@ -58,10 +58,10 @@ val useCaseModule = module {
 // ==================== VIEWMODEL MODULE ====================
 val viewModelModule = module {
     // Mendaftarkan ViewModels agar tidak force close
-    viewModelOf(::ProfilViewModel)
-    viewModelOf(::AddEditViewModel)
-    viewModelOf(::RiwayatViewModel)
-    viewModelOf(::DashboardViewModel)
+//    viewModelOf(::ProfilViewModel)
+//    viewModelOf(::AddEditViewModel)
+//    viewModelOf(::OlahragaScreen)
+//    viewModelOf(::DashboardViewModel)
 }
 
 // ==================== SHARED MODULES ====================

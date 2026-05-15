@@ -5,34 +5,29 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-// Palet Warna Premium Pantau Jompo (Dark + Neon Green)
-val NeonGreen = Color(0xFF00FF00) // Hijau stabilo sporty
-val DarkBackground = Color(0xFF121212) // Super dark gray (image_0.png background)
-val SurfaceDark = Color(0xFF1E1E1E) // Warna Card (image_0.png cards)
-val TextPrimary = Color(0xFFFFFFFF)
-val TextSecondary = Color(0xFFA0A0A0)
+// --- KAMUS WARNA FUTURISTIC GLASSMORPHISM KITA ---
+val BackgroundDark = Color(0xFF0A0A0A)
+val SurfaceDark = Color(0xFF161616)
+val NeonGreen = Color(0xFFD4FF00)
+val NeonGreenDim = Color(0xFF2A3A1A)
+val AccentPurple = Color(0xFFB388FF)
+val TextWhite = Color(0xFFF5F5F5)
+val TextGray = Color(0xFFA0A0A0)
 val ErrorRed = Color(0xFFFF5252)
 
 // Konfigurasi Warna Dark Mode
 private val DarkColorScheme = darkColorScheme(
     primary = NeonGreen,
     onPrimary = Color.Black,
-    background = DarkBackground,
-    onBackground = TextPrimary,
+    background = BackgroundDark,
+    onBackground = TextWhite,
     surface = SurfaceDark,
-    onSurface = TextPrimary,
+    onSurface = TextWhite,
     error = ErrorRed,
-    onSurfaceVariant = TextSecondary // Digunakan untuk teks deskripsi di card
+    onSurfaceVariant = TextGray
 )
 
 @Composable
-fun PantauJompoTheme(
-    content: @Composable () -> Unit
-) {
-    // Kita paksakan pakai Dark Mode agar UI-nya "nyala" seperti referensi
-    MaterialTheme(
-        colorScheme = DarkColorScheme,
-        // TODO: Typography bisa ditambahkan di sini nanti
-        content = content
-    )
+fun PantauJompoTheme(content: @Composable () -> Unit) {
+    MaterialTheme(colorScheme = DarkColorScheme, content = content)
 }
