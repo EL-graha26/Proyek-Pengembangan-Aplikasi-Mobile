@@ -13,14 +13,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-
-// --- IMPORT LAYAR UI 2.0 MODERN KITA ---
 import com.example.pantaujompo.presentation.screens.home.BerandaScreen
 import com.example.pantaujompo.presentation.screens.pemindai.PemindaiScreen
+import com.example.pantaujompo.presentation.screens.pemindai.CameraScannerScreen
+import com.example.pantaujompo.presentation.screens.pemindai.MealDetailScreen
 import com.example.pantaujompo.presentation.screens.olahraga.OlahragaScreen
 import com.example.pantaujompo.presentation.screens.olahraga.IndoorWorkoutScreen
 import com.example.pantaujompo.presentation.screens.olahraga.GpsTrackerScreen
-import com.example.pantaujompo.presentation.screens.artikel.ArtikelScreen
+import com.example.pantaujompo.presentation.screens.history.HistoryScreen
 import com.example.pantaujompo.presentation.screens.profil.ProfilScreen
 import com.example.pantaujompo.presentation.screens.addedit.AddEditActivityScreen
 import com.example.pantaujompo.presentation.theme.BackgroundDark
@@ -33,27 +33,30 @@ fun AppNavHost(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
-    // Sembunyikan Navbar kalau lagi di Form, GPS Tracker, ATAU Indoor Workout
+    // Sembunyikan Navbar kalau lagi di Form, GPS Tracker, Indoor Workout, Kamera, ATAU MealResult
     val showBottomBar = currentDestination?.hierarchy?.any {
         it.route?.contains("AddEditActivity") == true ||
                 it.route?.contains("ActivityDetail") == true ||
                 it.route?.contains("GpsTracker") == true ||
-                it.route?.contains("IndoorWorkout") == true
+                it.route?.contains("IndoorWorkout") == true ||
+                it.route?.contains("CameraScanner") == true ||
+                it.route?.contains("MealResult") == true
     } != true
 
     Scaffold(
-        containerColor = BackgroundDark, // <--- WAJIB GELAP BIAR KELIHATAN FUTURISTIK
+        containerColor = BackgroundDark,
         bottomBar = {
             if (showBottomBar) {
-                // INI NAVBAR KACA KITA BRAY!
+                // INI NAVBAR KACA KITA BRAY! SUDAH SINKRON 100%
                 FloatingGlassNavbar(
                     currentRoute = currentDestination?.route?.substringAfterLast("."),
                     onNavigate = { targetRoute ->
+                        // FIX SINKRONISASI JALUR: Nama string sama persis dengan NavItem di Navbar!
                         val routeObj = when(targetRoute) {
                             "Beranda" -> Route.Beranda
-                            "Olahraga" -> Route.Riwayat
+                            "Olahraga" -> Route.Olahraga
                             "Pemindai" -> Route.Pemindai
-                            "Statistik" -> Route.Artikel
+                            "History" -> Route.History
                             "Profil" -> Route.Profil
                             else -> Route.Beranda
                         }
@@ -70,21 +73,45 @@ fun AppNavHost(
         NavHost(
             navController = navController,
             startDestination = Route.Beranda,
-            modifier = modifier.fillMaxSize() // Gak pake padding supaya layarnya full nabrak ke bawah navbar
+            modifier = modifier.fillMaxSize()
         ) {
-            // --- 5 LAYAR UTAMA UI 2.0 ---
+            // --- BERANDA ---
             composable<Route.Beranda> { BerandaScreen() }
-            composable<Route.Pemindai> { PemindaiScreen() }
 
-            // MENU WORKOUT HUB
-            composable<Route.Riwayat> {
+            // --- LAYAR NUTRITION HUB (PEMINDAI) ---
+            composable<Route.Pemindai> {
+                PemindaiScreen(
+                    onNavigateToCamera = { navController.navigate(Route.CameraScanner) }
+                )
+            }
+
+            // --- LAYAR KAMERA ---
+            composable<Route.CameraScanner> {
+                CameraScannerScreen(
+                    onCaptureClick = { navController.navigate(Route.MealResult) },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            // --- LAYAR HASIL DETEKSI AI ---
+            composable<Route.MealResult> {
+                MealDetailScreen(
+                    onBack = { navController.popBackStack(Route.Pemindai, inclusive = false) }
+                )
+            }
+
+            // --- MENU WORKOUT HUB ---
+            composable<Route.Olahraga> {
                 OlahragaScreen(
                     onNavigateToGPS = { navController.navigate(Route.GpsTracker) },
                     onNavigateToIndoor = { navController.navigate(Route.IndoorWorkout) }
                 )
             }
 
-            composable<Route.Artikel> { ArtikelScreen() }
+            // --- LAYAR History ---
+            composable<Route.History> { HistoryScreen() }
+
+            // --- LAYAR PROFIL ---
             composable<Route.Profil> { ProfilScreen() }
 
             // --- LAYAR OLAHRAGA DETAIL ---

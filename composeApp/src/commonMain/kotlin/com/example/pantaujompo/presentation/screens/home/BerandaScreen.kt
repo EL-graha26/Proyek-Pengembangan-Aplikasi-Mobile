@@ -38,22 +38,20 @@ import com.example.pantaujompo.presentation.theme.*
 @Composable
 fun BerandaScreen() {
 
-    // PERBAIKAN UTAMA: Background Gradasi Presisi (Bukan Box Blur yang berantakan)
-    // Kita buat gradasi diagonal dari kiri atas ke kanan bawah
     val mainBackgroundGradient = Brush.linearGradient(
-        0.0f to Color(0xFF101010), // Base Hitam Pekat
-        0.3f to Color(0xFF161C10), // Sedikit pendar Hijau di area Header/Calendar
-        0.7f to Color(0xFF16101C), // Sedikit pendar Ungu di area Activity Cards
-        1.0f to BackgroundDark,    // Kembali ke base pekat di bawah
+        0.0f to Color(0xFF101010),
+        0.3f to Color(0xFF161C10),
+        0.7f to Color(0xFF16101C),
+        1.0f to BackgroundDark,
         start = Offset(0f, 0f),
         end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
     )
 
     Box(modifier = Modifier.fillMaxSize().background(mainBackgroundGradient)) {
 
-        // Konten LazyColumn meluncur di atas gradasi statis
+        // PERHATIKAN: padding bottom dihilangkan dari sini, karena kita pakai Spacer di bawah!
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(top = 40.dp, bottom = 120.dp),
+            modifier = Modifier.fillMaxSize().padding(top = 40.dp),
             verticalArrangement = Arrangement.spacedBy(28.dp)
         ) {
 
@@ -65,7 +63,6 @@ fun BerandaScreen() {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Avatar
                         Box(
                             modifier = Modifier.size(52.dp).clip(CircleShape).border(2.dp, NeonGreen, CircleShape).background(SurfaceDark),
                             contentAlignment = Alignment.Center
@@ -73,14 +70,12 @@ fun BerandaScreen() {
                             Text("👨‍💻", fontSize = 28.sp)
                         }
                         Spacer(modifier = Modifier.width(16.dp))
-                        // Sapaan
                         Column {
                             Text("Hello, Piela!", color = TextWhite, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
                             Text("Jumat, 15 Mei 2026", color = TextGray, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                         }
                     }
 
-                    // Kanan: Streak & Notif
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Box(modifier = Modifier.size(42.dp).clip(CircleShape).glassmorphism(cornerRadius = 21.dp, alpha = 0.08f), contentAlignment = Alignment.Center) {
                             Icon(Icons.Default.LocalFireDepartment, contentDescription = "Streak", tint = Color(0xFFFF5252), modifier = Modifier.size(20.dp))
@@ -92,7 +87,7 @@ fun BerandaScreen() {
                 }
             }
 
-            // 2. KALENDER ESTETIK (Glass Effect & Glow)
+            // 2. KALENDER ESTETIK
             item {
                 LazyRow(
                     modifier = Modifier.fillMaxWidth(),
@@ -103,7 +98,7 @@ fun BerandaScreen() {
                     val dates = listOf("11", "12", "13", "14", "15", "16", "17")
 
                     items(7) { i ->
-                        val isToday = i == 4 // Jumat 15
+                        val isToday = i == 4
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
@@ -126,7 +121,7 @@ fun BerandaScreen() {
                 }
             }
 
-            // 3. AI DAILY QUEST (Tombol Interaktif)
+            // 3. AI DAILY QUEST
             item {
                 Row(
                     modifier = Modifier
@@ -145,9 +140,8 @@ fun BerandaScreen() {
                         Text("Target Harian AI", color = TextWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         Text("Jalan 1.500 langkah lagi!", color = TextGray, fontSize = 12.sp)
                     }
-                    // Tombol Interaktif START
                     Row(
-                        modifier = Modifier.clip(RoundedCornerShape(50)).background(NeonGreen).clickable { /* TODO: Arahkan ke Tracker GPS */ }.padding(horizontal = 16.dp, vertical = 8.dp),
+                        modifier = Modifier.clip(RoundedCornerShape(50)).background(NeonGreen).clickable { }.padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text("START", color = BackgroundDark, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
@@ -157,7 +151,7 @@ fun BerandaScreen() {
                 }
             }
 
-            // 4. DAILY ACTIVITY & NUTRITION (Kaya Warna & Informatif)
+            // 4. DAILY ACTIVITY & NUTRITION
             item {
                 Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
                     Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
@@ -186,7 +180,6 @@ fun BerandaScreen() {
                                     Text("350", color = TextWhite, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
                                     Text("kcal", color = TextGray, fontSize = 12.sp)
                                 }
-                                // Mini Cincin Progress
                                 Canvas(modifier = Modifier.size(36.dp)) {
                                     drawArc(color = Color.DarkGray, startAngle = -90f, sweepAngle = 360f, useCenter = false, style = Stroke(width = 12f, cap = StrokeCap.Round))
                                     drawArc(color = Color(0xFFFF9800), startAngle = -90f, sweepAngle = 200f, useCenter = false, style = Stroke(width = 12f, cap = StrokeCap.Round))
@@ -213,7 +206,6 @@ fun BerandaScreen() {
                                     Text("860", color = TextWhite, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
                                     Text("kcal", color = TextGray, fontSize = 12.sp)
                                 }
-                                // Mini Grafik Gelombang
                                 Canvas(modifier = Modifier.size(width = 40.dp, height = 24.dp)) {
                                     val path = Path().apply {
                                         moveTo(0f, size.height)
@@ -228,7 +220,6 @@ fun BerandaScreen() {
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // KARTU MAKRO NUTRISI TERPADU (Sleek Dashboard)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -243,7 +234,7 @@ fun BerandaScreen() {
                 }
             }
 
-            // 5. START NEW HABITS (Artikel vertikal)
+            // 5. START NEW HABITS
             item {
                 Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
                     Text("Start New Habits", color = TextWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -266,7 +257,7 @@ fun BerandaScreen() {
                         .clip(RoundedCornerShape(24.dp))
                         .background(Brush.linearGradient(articleData[index].third))
                         .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(24.dp))
-                        .clickable { /* Buka artikel */ }
+                        .clickable { }
                         .padding(20.dp)
                 ) {
                     Column(modifier = Modifier.fillMaxWidth(0.8f)) {
@@ -287,11 +278,19 @@ fun BerandaScreen() {
                     }
                 }
             }
-        }
+
+            // --------------------------------------------------------
+            // 6. INI DIA BANTALAN NAVBAR-NYA BRAY! DITARUH PALING AKHIR
+            // --------------------------------------------------------
+            item {
+                Spacer(modifier = Modifier.height(130.dp))
+            }
+
+        } // <--- INI KURUNG TUTUP LazyColumn
     }
 }
 
-// Komponen Indikator Makro (Tetap sama)
+// Komponen Indikator Makro
 @Composable
 fun MacroIndicator(label: String, value: String, progress: Float, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {

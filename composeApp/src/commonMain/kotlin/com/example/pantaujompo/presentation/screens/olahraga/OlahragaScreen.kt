@@ -29,11 +29,10 @@ import androidx.compose.ui.unit.sp
 import com.example.pantaujompo.presentation.components.glassmorphism
 import com.example.pantaujompo.presentation.theme.*
 
-// PERHATIKAN: Kita tambahkan parameter kedua onNavigateToIndoor
 @Composable
 fun OlahragaScreen(
     onNavigateToGPS: () -> Unit = {},
-    onNavigateToIndoor: () -> Unit = {} // <--- TAMBAHAN BARU
+    onNavigateToIndoor: () -> Unit = {}
 ) {
 
     val mainBackgroundGradient = Brush.linearGradient(
@@ -45,7 +44,8 @@ fun OlahragaScreen(
 
     Box(modifier = Modifier.fillMaxSize().background(mainBackgroundGradient)) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(top = 40.dp, bottom = 120.dp),
+            // PADDING BOTTOM DIHILANGKAN, KITA PAKAI SPACER BRAY!
+            modifier = Modifier.fillMaxSize().padding(top = 40.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             // 1. HEADER
@@ -74,7 +74,7 @@ fun OlahragaScreen(
                             subtitle = "Bakar Kalori",
                             icon = Icons.Default.DirectionsRun,
                             accentColor = NeonGreen,
-                            onClick = onNavigateToGPS // KLIK LARI KE GPS
+                            onClick = onNavigateToGPS
                         )
                         OutdoorCard(
                             modifier = Modifier.weight(1f),
@@ -82,7 +82,7 @@ fun OlahragaScreen(
                             subtitle = "Kardio Ekstra",
                             icon = Icons.Default.DirectionsBike,
                             accentColor = Color(0xFF00E5FF),
-                            onClick = { /* Belum ada layar untuk sepeda */ }
+                            onClick = {  }
                         )
                     }
                     Spacer(modifier = Modifier.height(16.dp))
@@ -92,7 +92,7 @@ fun OlahragaScreen(
                         subtitle = "Pemulihan & Relaksasi",
                         icon = Icons.Default.DirectionsWalk,
                         accentColor = AccentPurple,
-                        onClick = { /* Belum ada layar untuk jalan */ }
+                        onClick = {  }
                     )
                 }
             }
@@ -110,13 +110,13 @@ fun OlahragaScreen(
                     IndoorCard(
                         title = "Push Up", targetMuscle = "Otot Dada & Trisep", reps = "3 Set • 15 Reps",
                         icon = Icons.Default.FitnessCenter, color = Color(0xFFFF9800),
-                        onClick = onNavigateToIndoor // <--- KLIK PUSH UP KE INDOOR
+                        onClick = onNavigateToIndoor
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     IndoorCard(
                         title = "Sit Up", targetMuscle = "Otot Inti (Core) & Perut", reps = "3 Set • 20 Reps",
                         icon = Icons.Default.SportsGymnastics, color = NeonGreen,
-                        onClick = { /* Bisa dipasang onNavigateToIndoor nanti jika beda data */ }
+                        onClick = {  }
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     IndoorCard(
@@ -125,6 +125,11 @@ fun OlahragaScreen(
                         onClick = {}
                     )
                 }
+            }
+
+            // 4. BANTALAN NAVBAR TEMBUS PANDANG BRAY!
+            item {
+                Spacer(modifier = Modifier.height(130.dp))
             }
         }
     }
@@ -171,7 +176,7 @@ fun OutdoorCard(
     }
 }
 
-// KOMPONEN KARTU INDOOR (DIPERBAIKI)
+// KOMPONEN KARTU INDOOR
 @Composable
 fun IndoorCard(
     title: String,
@@ -179,7 +184,7 @@ fun IndoorCard(
     reps: String,
     icon: ImageVector,
     color: Color,
-    onClick: () -> Unit = {} // <--- TAMBAH PARAMETER INI
+    onClick: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -187,7 +192,7 @@ fun IndoorCard(
             .clip(RoundedCornerShape(24.dp))
             .glassmorphism(cornerRadius = 24.dp, alpha = 0.05f)
             .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(24.dp))
-            .clickable { onClick() } // <--- GUNAKAN DI SINI, BUKAN DI LUAR KURUNG
+            .clickable { onClick() }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

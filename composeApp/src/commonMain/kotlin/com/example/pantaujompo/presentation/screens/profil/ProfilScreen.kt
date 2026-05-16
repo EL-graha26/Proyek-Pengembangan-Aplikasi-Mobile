@@ -1,184 +1,268 @@
 package com.example.pantaujompo.presentation.screens.profil
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MonitorWeight
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.WorkspacePremium
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Height
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material.icons.outlined.Cake
+import androidx.compose.material.icons.outlined.HistoryEdu
+import androidx.compose.material.icons.outlined.MonitorWeight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pantaujompo.presentation.components.glassmorphism
 import com.example.pantaujompo.presentation.theme.*
+import org.koin.compose.koinInject
 
 @Composable
-fun ProfilScreen() {
-    // State dummy untuk input, nantinya ini ditarik dari SQLDelight
-    var berat by remember { mutableStateOf("65") }
-    var tinggi by remember { mutableStateOf("170") }
+fun ProfilScreen(
+    viewModel: ProfilViewModel = koinInject()
+) {
+    val mainBackgroundGradient = Brush.linearGradient(
+        0.0f to Color(0xFF101010),
+        0.5f to Color(0xFF161C10),
+        1.0f to BackgroundDark
+    )
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackgroundDark)
-            .padding(start = 24.dp, end = 24.dp, top = 32.dp, bottom = 120.dp), // Padding bawah untuk Navbar
-        verticalArrangement = Arrangement.spacedBy(28.dp)
+            .background(mainBackgroundGradient)
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        // 1. HEADER (AVATAR & STATUS)
+        // --- 1. HEADER & AVATAR PENGGUNA ---
         item {
+            Spacer(modifier = Modifier.height(48.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("METRIK PENGGUNA", color = NeonGreen, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+                Box(
+                    modifier = Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).glassmorphism(12.dp, 0.08f).clickable { },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextWhite)
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .glassmorphism(cornerRadius = 24.dp, alpha = 0.05f)
+                    .border(1.dp, Color.White.copy(0.05f), RoundedCornerShape(24.dp))
+                    .padding(vertical = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
-                    modifier = Modifier
-                        .size(120.dp)
-                        .clip(CircleShape)
-                        .glassmorphism(cornerRadius = 60.dp, alpha = 0.1f)
-                        .border(2.dp, NeonGreenDim, CircleShape),
+                    modifier = Modifier.size(90.dp).clip(CircleShape).border(2.dp, NeonGreen, CircleShape).background(SurfaceDark),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("👨‍💻", fontSize = 64.sp)
+                    Text("😎", fontSize = 42.sp)
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Muhammad Piela", color = TextWhite, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+                Text(viewModel.nama, color = TextWhite, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Target: Peningkatan Kebugaran & Postur", color = TextGray, fontSize = 13.sp)
+            }
+        }
 
-                // Badge Level
-                Box(
-                    modifier = Modifier
-                        .padding(top = 8.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(NeonGreen.copy(alpha = 0.2f))
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                ) {
-                    Text("Lvl 5 • Active Explorer", color = NeonGreen, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        // --- 2. TIGA KOTAK METRIK DISPLAY ---
+        item {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                MetricDisplayCard("Age", viewModel.usia, "Yrs", Icons.Outlined.Cake, Modifier.weight(1f))
+                MetricDisplayCard("Height", viewModel.tinggiCm, "Cm", Icons.Default.Height, Modifier.weight(1f))
+                MetricDisplayCard("Weight", viewModel.beratKg, "Kg", Icons.Outlined.MonitorWeight, Modifier.weight(1f))
+            }
+        }
+
+        // --- 3. GAUGE BMI BESAR ---
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(32.dp))
+                    .glassmorphism(cornerRadius = 32.dp, alpha = 0.05f)
+                    .border(1.dp, Color.White.copy(0.05f), RoundedCornerShape(32.dp))
+                    .background(Brush.radialGradient(listOf(NeonGreen.copy(0.05f), Color.Transparent), radius = 400f))
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Whatshot, contentDescription = null, tint = NeonGreen)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Body Mass Index (BMI)", color = TextWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+
+                val bmiValue = viewModel.bmiScore
+                val bmiCategory = viewModel.bmiCategory
+                val bmiColor = when(bmiCategory) {
+                    "Kurus" -> Color(0xFF00E5FF)
+                    "Normal" -> NeonGreen
+                    "Gemuk", "Overweight" -> Color(0xFFFFC107)
+                    "Obesitas" -> Color(0xFFFF5252)
+                    else -> SurfaceDark
+                }
+                val progressValue = ((bmiValue - 10) / 30.0).toFloat().coerceIn(0f, 1f)
+
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(160.dp)) {
+                    CircularProgressIndicator(progress = { 1f }, modifier = Modifier.fillMaxSize(), color = SurfaceDark, strokeWidth = 16.dp, strokeCap = StrokeCap.Round)
+                    CircularProgressIndicator(progress = { progressValue }, modifier = Modifier.fillMaxSize(), color = bmiColor, strokeWidth = 16.dp, strokeCap = StrokeCap.Round)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(if(bmiValue == 0.0) "--" else bmiValue.toString(), color = TextWhite, fontSize = 36.sp, fontWeight = FontWeight.ExtraBold)
+                        Text(bmiCategory.uppercase(), color = bmiColor, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("18.5", color = TextGray, fontSize = 12.sp)
+                    Text("25.0", color = TextGray, fontSize = 12.sp)
+                    Text("30.0", color = TextGray, fontSize = 12.sp)
                 }
             }
         }
 
-        // 2. BMI GAUGE CHART (SPEEDOMETER 3D)
+        // --- 4. KALKULATOR BIOFISIK ---
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(32.dp))
+                    .glassmorphism(cornerRadius = 32.dp, alpha = 0.05f)
+                    .border(1.dp, Color.White.copy(0.05f), RoundedCornerShape(32.dp))
+                    .padding(24.dp)
+            ) {
+                Text("Kalkulator Biofisik", color = TextWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    BiofisikInput("Usia", viewModel.usia, "Thn", Modifier.weight(1f)) { viewModel.usia = it }
+                    BiofisikInput("Tinggi", viewModel.tinggiCm, "cm", Modifier.weight(1f)) { viewModel.tinggiCm = it }
+                    BiofisikInput("Berat", viewModel.beratKg, "kg", Modifier.weight(1f)) { viewModel.beratKg = it }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = { viewModel.saveProfile() },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = NeonGreen)
+                ) {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = BackgroundDark, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("UPDATE DATA", color = BackgroundDark, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+                }
+            }
+        }
+
+        // --- 5. AI DAILY INSIGHT ---
         item {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .glassmorphism(cornerRadius = 32.dp, alpha = 0.05f)
-                    .padding(24.dp),
-                contentAlignment = Alignment.Center
+                    .clip(RoundedCornerShape(28.dp))
+                    .glassmorphism(cornerRadius = 28.dp, alpha = 0.06f)
+                    .background(Brush.horizontalGradient(listOf(AccentPurple.copy(0.15f), Color.Transparent)))
+                    .border(1.dp, AccentPurple.copy(0.3f), RoundedCornerShape(28.dp))
+                    .clickable { }
+                    .padding(24.dp)
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Indeks Massa Tubuh (BMI)", color = TextGray, fontSize = 14.sp)
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Box(modifier = Modifier.height(120.dp).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
-                        Canvas(modifier = Modifier.size(220.dp)) {
-                            val strokeWidth = 40f
-                            // Zona Kurang (Biru/Cyan) - Kiri
-                            drawArc(color = Color(0xFF00E5FF), startAngle = 180f, sweepAngle = 60f, useCenter = false, style = Stroke(width = strokeWidth, cap = StrokeCap.Round))
-                            // Zona Normal (Neon Green) - Tengah
-                            drawArc(color = NeonGreen, startAngle = 240f, sweepAngle = 60f, useCenter = false, style = Stroke(width = strokeWidth))
-                            // Zona Berlebih (Ungu) - Kanan
-                            drawArc(color = AccentPurple, startAngle = 300f, sweepAngle = 60f, useCenter = false, style = Stroke(width = strokeWidth, cap = StrokeCap.Round))
-                        }
-
-                        // Teks Skor di Tengah Bawah Grafik
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.offset(y = (-16).dp)) {
-                            Text("22.5", color = TextWhite, fontSize = 40.sp, fontWeight = FontWeight.ExtraBold)
-                            Text("NORMAL", color = NeonGreen, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.Top) {
+                    Box(modifier = Modifier.size(56.dp).clip(RoundedCornerShape(16.dp)).background(AccentPurple), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = BackgroundDark, modifier = Modifier.size(28.dp))
+                    }
+                    Spacer(modifier = Modifier.width(20.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("AI Health News", color = AccentPurple, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text("Rencana makan terbarumu selaras dengan target kebugaran. Baca panduan nutrisi harian di sini.", color = TextWhite.copy(0.9f), fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.HistoryEdu, contentDescription = null, tint = TextGray, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Baca selengkapnya", color = TextGray, fontSize = 12.sp)
                         }
                     }
                 }
             }
         }
 
-        // 3. INPUT BIO-METRIK (BORDERLESS GLASS)
+        // --- 6. BANTALAN BAWAH ---
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                // Input Berat
-                OutlinedTextField(
-                    value = berat,
-                    onValueChange = { berat = it },
-                    label = { Text("Berat (kg)", color = TextGray) },
-                    modifier = Modifier.weight(1f).glassmorphism(cornerRadius = 24.dp, alpha = 0.05f),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = NeonGreen,
-                        unfocusedBorderColor = Color.Transparent, // Menghilangkan kotak kaku
-                        focusedTextColor = TextWhite,
-                        unfocusedTextColor = TextWhite
-                    ),
-                    shape = RoundedCornerShape(24.dp),
-                    singleLine = true
-                )
-
-                // Input Tinggi
-                OutlinedTextField(
-                    value = tinggi,
-                    onValueChange = { tinggi = it },
-                    label = { Text("Tinggi (cm)", color = TextGray) },
-                    modifier = Modifier.weight(1f).glassmorphism(cornerRadius = 24.dp, alpha = 0.05f),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = NeonGreen,
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedTextColor = TextWhite,
-                        unfocusedTextColor = TextWhite
-                    ),
-                    shape = RoundedCornerShape(24.dp),
-                    singleLine = true
-                )
-            }
+            Spacer(modifier = Modifier.height(130.dp))
         }
+    }
+}
 
-        // 4. RAK PIALA (GAMIFIKASI)
-        item {
-            Text("Pencapaian", color = TextWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                BadgeItem(icon = Icons.Default.WorkspacePremium, title = "1st 5K", isUnlocked = true)
-                BadgeItem(icon = Icons.Default.Timer, title = "Streak 7D", isUnlocked = true)
-                BadgeItem(icon = Icons.Default.Star, title = "Defisit", isUnlocked = false)
+// --- KOMPONEN BANTUAN KHUSUS PROFIL ---
+@Composable
+fun MetricDisplayCard(label: String, value: String, unit: String, icon: ImageVector, modifier: Modifier) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .glassmorphism(cornerRadius = 20.dp, alpha = 0.05f)
+            .border(1.dp, Color.White.copy(0.05f), RoundedCornerShape(20.dp))
+            .padding(12.dp)
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(icon, contentDescription = null, tint = TextGray, modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(label, color = TextGray, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(value, color = TextWhite, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+                Text(unit, color = TextGray, fontSize = 10.sp, modifier = Modifier.padding(bottom = 3.dp, start = 2.dp))
             }
         }
     }
 }
 
 @Composable
-fun BadgeItem(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, isUnlocked: Boolean) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .clip(CircleShape)
-                .glassmorphism(cornerRadius = 36.dp, alpha = if (isUnlocked) 0.15f else 0.02f)
-                .border(2.dp, if (isUnlocked) NeonGreen else Color.DarkGray, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                tint = if (isUnlocked) NeonGreen else Color.DarkGray,
-                modifier = Modifier.size(32.dp)
-            )
-        }
+fun BiofisikInput(label: String, value: String, unit: String, modifier: Modifier, onValueChange: (String) -> Unit) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(label, color = TextGray, fontSize = 12.sp)
         Spacer(modifier = Modifier.height(8.dp))
-        Text(title, color = if (isUnlocked) TextWhite else TextGray, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(SurfaceDark.copy(alpha = 0.5f)),
+            textStyle = LocalTextStyle.current.copy(color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 16.sp, textAlign = TextAlign.Center),
+            placeholder = { Text("0", color = TextGray) },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = NeonGreen,
+                unfocusedBorderColor = Color.Transparent,
+                cursorColor = NeonGreen
+            ),
+            singleLine = true
+        )
     }
 }

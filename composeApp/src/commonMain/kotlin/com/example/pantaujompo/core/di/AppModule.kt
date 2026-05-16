@@ -58,7 +58,7 @@ val useCaseModule = module {
 // ==================== VIEWMODEL MODULE ====================
 val viewModelModule = module {
     // Mendaftarkan ViewModels agar tidak force close
-//    viewModelOf(::ProfilViewModel)
+viewModelOf(::ProfilViewModel)
 //    viewModelOf(::AddEditViewModel)
 //    viewModelOf(::OlahragaScreen)
 //    viewModelOf(::DashboardViewModel)
