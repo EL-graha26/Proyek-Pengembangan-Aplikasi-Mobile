@@ -30,16 +30,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import com.example.pantaujompo.R // Ganti sesuai package name lo bray
 import com.google.android.gms.location.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
+import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
+import org.osmdroid.util.MapTileIndex
 import java.util.Locale
 
 @SuppressLint("MissingPermission")
@@ -49,82 +49,66 @@ fun TrackingScreen(
 ) {
     val context = LocalContext.current
 
-    // 🔥 RITUAL WAJIB OSMDROID 🔥
+    // Tweak Performa RAM biar loading peta cepet
     remember {
-        Configuration.getInstance().load(context, context.getSharedPreferences("osmdroid_pref", Context.MODE_PRIVATE))
+        val sharedPref = context.getSharedPreferences("osmdroid_pref", Context.MODE_PRIVATE)
+        Configuration.getInstance().load(context, sharedPref)
         Configuration.getInstance().userAgentValue = context.packageName
+
+        Configuration.getInstance().cacheMapTileCount = 100
+        Configuration.getInstance().cacheMapTileOvershoot = 100
     }
 
-    // Siapkan MapView dari OSMDroid
     val mapView = remember { MapView(context) }
-
-    // State buat nyimpen marker lokasi user agar tidak terus dibuat ulang bray
     var userMarker by remember { mutableStateOf<Marker?>(null) }
-
-    // 🔥 State buat nyatet apakah kamera map udah kunci ke user atau belum bray 🔥
     var isMapCenteredOnUser by remember { mutableStateOf(false) }
 
     var seconds by remember { mutableStateOf(0) }
     var isRunning by remember { mutableStateOf(true) }
-
     var totalDistanceInMeters by remember { mutableStateOf(0.0) }
     var previousLocation by remember { mutableStateOf<Location?>(null) }
-
-    // 🔥 UBAH LatLng jadi GeoPoint (OSMDroid) 🔥
     val routePoints = remember { mutableStateListOf<GeoPoint>() }
     var hasLocationPermission by remember { mutableStateOf(false) }
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
         hasLocationPermission = permissions[android.Manifest.permission.ACCESS_FINE_LOCATION] == true
     }
-
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
+    // Timer lari
     LaunchedEffect(isRunning) {
-        while (isRunning) {
-            delay(1000)
-            seconds++
-        }
+        while (isRunning) { delay(1000); seconds++ }
     }
 
-    // 🔥 JURUS DEWA INSTANT GPS LOCK: Ambil Last Known Location pas start bray 🔥
+    // Lock GPS di awal buka layar
     LaunchedEffect(hasLocationPermission) {
         if (hasLocationPermission && !isMapCenteredOnUser) {
             fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
                 location?.let {
                     val initialGeoPoint = GeoPoint(it.latitude, it.longitude)
-                    routePoints.add(initialGeoPoint) // Tambah titik awal
+                    routePoints.add(initialGeoPoint)
 
-                    // Langsung seret kamera map ke kakek bray! Gak pake nunggu!
+                    mapView.controller.setCenter(initialGeoPoint)
+                    mapView.controller.setZoom(18.0) // Start agak jauh
                     mapView.controller.animateTo(initialGeoPoint)
-                    mapView.controller.setZoom(17.5)
+                    mapView.controller.setZoom(20.0) // 🔥 Sesuai request lo: Mentok di 20.0 🔥
+
                     isMapCenteredOnUser = true
                 }
             }
         }
     }
 
+    // Update GPS Realtime saat lari
     LaunchedEffect(hasLocationPermission, isRunning) {
         if (!hasLocationPermission) {
-            permissionLauncher.launch(
-                arrayOf(
-                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-            )
+            permissionLauncher.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION))
         } else if (isRunning) {
-            val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 2000)
-                .setMinUpdateIntervalMillis(1000)
-                .build()
-
+            val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 2000).setMinUpdateIntervalMillis(1000).build()
             val locationCallback = object : LocationCallback() {
                 override fun onLocationResult(locationResult: LocationResult) {
                     for (location in locationResult.locations) {
                         if (location.accuracy > 15f) continue
-
-                        // 🔥 UBAH KE GeoPoint 🔥
                         val currentGeoPoint = GeoPoint(location.latitude, location.longitude)
 
                         if (previousLocation == null) {
@@ -137,7 +121,6 @@ fun TrackingScreen(
                             val distanceDelta = lastLoc.distanceTo(location)
                             val timeDelta = (location.time - lastLoc.time) / 1000.0
                             val speed = if (timeDelta > 0) distanceDelta / timeDelta else 0.0
-
                             if (distanceDelta > 2.0 && speed < 12.0) {
                                 totalDistanceInMeters += distanceDelta
                                 previousLocation = location
@@ -147,22 +130,16 @@ fun TrackingScreen(
                     }
                 }
             }
-
             fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper())
-
             suspendCancellableCoroutine<Unit> { continuation ->
-                continuation.invokeOnCancellation {
-                    fusedLocationClient.removeLocationUpdates(locationCallback)
-                }
+                continuation.invokeOnCancellation { fusedLocationClient.removeLocationUpdates(locationCallback) }
             }
         }
     }
 
-    // ==================== LOGIKA KALKULASI ====================
     val distanceInKm = totalDistanceInMeters / 1000.0
     val calculatedKcal = (distanceInKm * 60).toInt()
     val formatTime = String.format(Locale.US, "%02d:%02d:%02d", seconds / 3600, (seconds % 3600) / 60, seconds % 60)
-
     val paceDouble = if (distanceInKm > 0) (seconds / 60.0) / distanceInKm else 0.0
     val paceMin = paceDouble.toInt()
     val paceSec = ((paceDouble - paceMin) * 60).toInt()
@@ -170,67 +147,72 @@ fun TrackingScreen(
 
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0D0D0D))) {
 
-        // ==================== 🔥 PETA GANTENG OSMDROID + CUSTOM MARKER 🔥 ====================
         AndroidView(
             factory = {
                 mapView.apply {
                     setMultiTouchControls(true)
-                    // 🔥 MODERNDISASI PETA: Pake tile source MAPNIK yang grafisnya lebih halus & HD bray!
-                    setTileSource(TileSourceFactory.MAPNIK)
-
-                    // Matikan tombol zoom standard yang ganggu bray! Cubit aja mapnya.
                     setBuiltInZoomControls(false)
 
-                    controller.setZoom(17.5)
+                    // 🔥 INI KUNCINYA BIAR GAK BLUR/PECAH BRAY 🔥
+                    isTilesScaledToDpi = false
+
+                    // JURUS GOOGLE MAPS HD
+                    val googleMapsTileSource = object : OnlineTileSourceBase(
+                        "GoogleMaps",
+                        1,
+                        20,
+                        256,
+                        ".png",
+                        arrayOf(
+                            "https://mt0.google.com/vt/lyrs=m&hl=id&z=",
+                            "https://mt1.google.com/vt/lyrs=m&hl=id&z=",
+                            "https://mt2.google.com/vt/lyrs=m&hl=id&z=",
+                            "https://mt3.google.com/vt/lyrs=m&hl=id&z="
+                        )
+                    ) {
+                        override fun getTileURLString(pMapTileIndex: Long): String {
+                            return baseUrl + MapTileIndex.getZoom(pMapTileIndex) +
+                                    "&x=" + MapTileIndex.getX(pMapTileIndex) +
+                                    "&y=" + MapTileIndex.getY(pMapTileIndex)
+                        }
+                    }
+
+                    setTileSource(googleMapsTileSource)
+                    controller.setZoom(20.0) // Default zoom lo bray
                 }
             },
             modifier = Modifier.fillMaxSize(),
             update = { map ->
-                map.overlays.clear() // Bersihkan peta dari garis lama
+                map.overlays.removeAll { it !is org.osmdroid.views.overlay.TilesOverlay }
 
-                // 🔥 1. JURUS MARKER LOKASI GANTENG (ALA STRAVA BLUE DOT) 🔥
                 if (routePoints.isNotEmpty()) {
                     val currentPos = routePoints.last()
 
-                    // Kalau markernya belum ada, bikin bray
                     if (userMarker == null) {
                         userMarker = Marker(map)
-
-                        // 🔥 INI KUNCINYA GANTENG: Ambil drawable custom dot yang lo bikin bray! 🔥
                         userMarker?.icon = createCustomMarkerDrawable(context)
-
-                        userMarker?.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER) // Tepat di tengah
-                        userMarker?.title = "Lokasi Kakek/Nenek"
+                        userMarker?.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                     }
-
-                    // Update posisi marker bray
                     userMarker?.position = currentPos
                     map.overlays.add(userMarker!!)
 
-                    // 🔥 2. JURUS RUTE JALAN GANTENG (JALUR IJO NEON TAJAM) 🔥
                     val line = Polyline(map)
                     line.setPoints(routePoints)
-
-                    // Bikin warnanya neon biar Strava abis bray!
                     line.outlinePaint.color = Color(0xFF00FF00).toArgb()
                     line.outlinePaint.strokeWidth = 14f
                     line.outlinePaint.isAntiAlias = true
                     line.outlinePaint.strokeJoin = Paint.Join.ROUND
                     map.overlays.add(line)
 
-                    // Kamera ngikutin posisi lo jalan bray (Halus bray animateTo-nya)
                     if (isMapCenteredOnUser) {
                         map.controller.animateTo(currentPos)
                     }
-                } else {
-                    // Default kamera sebelum dapet GPS (Lampung Area) bray
-                    map.controller.setCenter(GeoPoint(-5.397140, 105.266789))
                 }
-                map.invalidate() // Refresh peta bray
+                map.invalidate()
             }
         )
 
-        // ==================== FLOATING TOP BAR ====================
+        // UI Bawah & Atas (Sama kyk sebelumnya)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -261,9 +243,14 @@ fun TrackingScreen(
             }
         }
 
-        // ==================== PREMIUM DASHBOARD ====================
         Box(
-            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().clip(RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp)).background(Color(0xFF0A0A0A).copy(alpha = 0.95f)).border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp)).padding(top = 16.dp, start = 32.dp, end = 32.dp, bottom = 32.dp)
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp))
+                .background(Color(0xFF0A0A0A).copy(alpha = 0.95f))
+                .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp))
+                .padding(top = 16.dp, start = 32.dp, end = 32.dp, bottom = 32.dp)
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(modifier = Modifier.width(40.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(Color.DarkGray))
@@ -311,27 +298,14 @@ fun TrackingScreen(
         }
     }
 
-    // PENTING: Bersihkan memori peta pas layarnya ditutup bray bray bray!
     DisposableEffect(Unit) {
-        onDispose {
-            mapView.onDetach()
-        }
+        onDispose { mapView.onDetach() }
     }
 }
 
-// 🔥 FUNGSI SAKTI BUAT BIKIN BLUE DOT ALA STRAVA BRAY! 🔥
-// Kita gak pake image file bray bray bray, tapi bikin pake kodingan drawable Android murni!
 private fun createCustomMarkerDrawable(context: Context): Drawable {
-    // Bulatan biru pekat bray bray bray
     val solidBlueDrawable = ContextCompat.getDrawable(context, android.R.drawable.presence_online) as BitmapDrawable
-    val bitmap = solidBlueDrawable.bitmap
-
-    // Ganti warnanya jadi Biru Strava PeDeHa bray bray bray!
     solidBlueDrawable.setTint(AndroidColor.parseColor("#007AFF"))
-
-    // Opsional bray bray bray: Lo bisa nambahin layer border putih disini bray bray bray.
-    // Tapi pake presence_online ini udah lumayan modern bray bray bray.
-
     return solidBlueDrawable
 }
 

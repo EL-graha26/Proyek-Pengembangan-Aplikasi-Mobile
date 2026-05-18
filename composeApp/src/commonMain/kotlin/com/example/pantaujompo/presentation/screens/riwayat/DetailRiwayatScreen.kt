@@ -29,11 +29,15 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.example.pantaujompo.data.local.room.RiwayatEntity
 import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
+
+// 🔥 IMPORT BARU BUAT NGEBAJAK TILE GOOGLE MAPS 🔥
+import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
+import org.osmdroid.util.MapTileIndex
+
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -45,10 +49,16 @@ fun DetailRiwayatScreen(
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
+    // 🔥 Tweak Performa RAM biar loading peta history cepet 🔥
     remember {
-        Configuration.getInstance().load(context, context.getSharedPreferences("osmdroid_pref", Context.MODE_PRIVATE))
+        val sharedPref = context.getSharedPreferences("osmdroid_pref", Context.MODE_PRIVATE)
+        Configuration.getInstance().load(context, sharedPref)
         Configuration.getInstance().userAgentValue = context.packageName
+
+        Configuration.getInstance().cacheMapTileCount = 100
+        Configuration.getInstance().cacheMapTileOvershoot = 100
     }
+
     val mapView = remember { MapView(context) }
 
     val listKoordinatRute = remember(riwayat.ruteString) {
@@ -67,20 +77,46 @@ fun DetailRiwayatScreen(
 
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0D0D0D))) {
 
-        // ==================== 1. PETA DI BACKGROUND (UDAH GAK ADA BAYANGAN) ====================
+        // ==================== 1. PETA GOOGLE MAPS SUPER HD ====================
         Box(modifier = Modifier.fillMaxWidth().height(450.dp)) {
             AndroidView(
                 factory = {
                     mapView.apply {
                         setMultiTouchControls(true)
-                        setTileSource(TileSourceFactory.MAPNIK)
                         setBuiltInZoomControls(false)
-                        controller.setZoom(17.5)
+
+                        // 🔥 INI KUNCINYA BIAR GAK BLUR/PECAH BRAY 🔥
+                        isTilesScaledToDpi = false
+
+                        // JURUS TERLARANG: PASANG GOOGLE MAPS
+                        val googleMapsTileSource = object : OnlineTileSourceBase(
+                            "GoogleMaps",
+                            1,
+                            20,
+                            256,
+                            ".png",
+                            arrayOf(
+                                "https://mt0.google.com/vt/lyrs=m&hl=id&z=",
+                                "https://mt1.google.com/vt/lyrs=m&hl=id&z=",
+                                "https://mt2.google.com/vt/lyrs=m&hl=id&z=",
+                                "https://mt3.google.com/vt/lyrs=m&hl=id&z="
+                            )
+                        ) {
+                            override fun getTileURLString(pMapTileIndex: Long): String {
+                                return baseUrl + MapTileIndex.getZoom(pMapTileIndex) +
+                                        "&x=" + MapTileIndex.getX(pMapTileIndex) +
+                                        "&y=" + MapTileIndex.getY(pMapTileIndex)
+                            }
+                        }
+
+                        setTileSource(googleMapsTileSource)
+                        controller.setZoom(19.0) // Samain kayak tracking screen biar konsisten!
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
                 update = { map ->
-                    map.overlays.clear()
+                    map.overlays.removeAll { it !is org.osmdroid.views.overlay.TilesOverlay }
+
                     if (listKoordinatRute.isNotEmpty()) {
                         val line = Polyline(map)
                         line.setPoints(listKoordinatRute)
@@ -96,6 +132,7 @@ fun DetailRiwayatScreen(
                         }
                         map.overlays.add(markerStart)
 
+                        // Fokusin kamera ke tengah-tengah rute
                         map.controller.setCenter(listKoordinatRute.last())
                     } else {
                         map.controller.setCenter(GeoPoint(-5.397140, 105.266789))
@@ -159,12 +196,14 @@ fun DetailRiwayatScreen(
     }
 }
 
+// Fungsi Custom Marker Biru
 private fun createCustomMarkerDrawable(context: Context): Drawable {
     val solidBlueDrawable = ContextCompat.getDrawable(context, android.R.drawable.presence_online) as BitmapDrawable
     solidBlueDrawable.setTint(AndroidColor.parseColor("#007AFF"))
     return solidBlueDrawable
 }
 
+// Fungsi Desain Metrik
 @Composable
 fun DetailMetricItem(label: String, value: String, unit: String) {
     Column(modifier = Modifier.width(150.dp)) {
