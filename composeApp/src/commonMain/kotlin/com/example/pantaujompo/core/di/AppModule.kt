@@ -15,6 +15,7 @@ import com.example.pantaujompo.presentation.screens.profil.ProfilViewModel
 import com.example.pantaujompo.presentation.screens.addedit.AddEditViewModel
 import com.example.pantaujompo.presentation.screens.riwayat.RiwayatViewModel
 import com.example.pantaujompo.presentation.screens.home.DashboardViewModel
+import com.example.pantaujompo.presentation.screens.artikel.ArtikelViewModel
 
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
@@ -32,10 +33,15 @@ val networkModule = module {
 
 // ==================== DATABASE MODULE ====================
 val databaseModule = module {
+    // SQLDelight (Database lama)
     single {
         val driverFactory: DatabaseDriverFactory = get()
-        NoteDatabase(driverFactory.createDriver()) // TODO: Nanti update ke ActivityDatabase
+        NoteDatabase(driverFactory.createDriver())
     }
+
+    // 🔥 PENTING BUAT KMP 🔥
+    // Mesin Room Database dan DAO-nya GAK KITA BIKIN DI SINI.
+    // Kita bakal nembak (inject) dari AndroidMain lewat 'platformModules' di bawah!
 }
 
 // ==================== PREFERENCES MODULE ====================
@@ -61,7 +67,10 @@ val viewModelModule = module {
     viewModelOf(::ProfilViewModel)
     viewModelOf(::AddEditViewModel)
     viewModelOf(::RiwayatViewModel)
+
+    // Koin bakal pintar nyari dependencies-nya pas DashboardViewModel dipanggil
     viewModelOf(::DashboardViewModel)
+    viewModelOf(::ArtikelViewModel)
 }
 
 // ==================== SHARED MODULES ====================

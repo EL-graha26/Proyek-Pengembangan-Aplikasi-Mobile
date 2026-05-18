@@ -9,6 +9,9 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.sqldelight)
+
+    // 🔥 1. PLUGIN KSP (Catatan: Kalau error versi, ganti angka ini sesuai versi Kotlin lo)
+    id("com.google.devtools.ksp") version "2.0.21-1.0.27"
 }
 
 // Load local.properties for API keys
@@ -38,12 +41,10 @@ kotlin {
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
 
-            // Kotlin
+            // Kotlin & Ktor
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.datetime)
-
-            // Ktor
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.json)
@@ -54,19 +55,15 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
 
-            // SQLDelight
+            // SQLDelight & DataStore
             implementation(libs.sqldelight.runtime)
             implementation(libs.sqldelight.coroutines)
-
-            // DataStore + Okio
             implementation(libs.datastore.preferences)
             implementation(libs.okio)
 
-            // Lifecycle & ViewModel
+            // Lifecycle & Navigation
             implementation(libs.lifecycle.viewmodel)
             implementation(libs.lifecycle.runtime.compose)
-
-            // Navigation
             implementation(libs.navigation.compose)
 
             // Coil
@@ -85,8 +82,28 @@ kotlin {
             implementation(libs.koin.android)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.sqldelight.android.driver)
+
+            // ==========================================
+            // 🔥 LIBRARY KHUSUS ANDROID DI SINI 🔥
+            // ==========================================
+            // Google Maps & Sensor GPS
+            //implementation("com.google.maps.android:maps-compose:2.14.0")
+            //implementation("com.google.android.gms:play-services-maps:18.2.0")
+            implementation("com.google.android.gms:play-services-location:21.2.0")
+
+            // Room Database Runtime & KTX
+            val room_version = "2.6.1"
+            implementation("androidx.room:room-runtime:$room_version")
+            implementation("androidx.room:room-ktx:$room_version")
+
+            implementation("org.osmdroid:osmdroid-android:6.1.18")
         }
     }
+}
+
+// 🔥 2. KSP COMPILER ROOM (Pake "kspAndroid" Biar KMP Gak Bingung!) 🔥
+dependencies {
+    add("kspAndroid", "androidx.room:room-compiler:2.6.1")
 }
 
 android {

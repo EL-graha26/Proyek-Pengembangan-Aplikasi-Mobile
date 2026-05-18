@@ -11,6 +11,9 @@ sealed interface Route {
     @Serializable data object Artikel : Route
     @Serializable data object Profil : Route
 
+    @Serializable
+    object Tracking
+
     // Rute tambahan untuk CRUD (Ini yang tadi ketinggalan bray!)
     @Serializable data class AddEditActivity(val id: Long? = null) : Route
     @Serializable data class DetailRiwayat(val id: Long) : Route
