@@ -10,7 +10,7 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.sqldelight)
 
-    // 🔥 1. PLUGIN KSP (Catatan: Kalau error versi, ganti angka ini sesuai versi Kotlin lo)
+    // 🔥 1. PLUGIN KSP
     id("com.google.devtools.ksp") version "2.0.21-1.0.27"
 }
 
@@ -69,6 +69,9 @@ kotlin {
             // Coil
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor)
+
+            // LIBRARY GEMINI AI
+            //implementation("dev.shreyaspatil.generativeai:generativeai-google:0.9.0-1.1.0")
         }
 
         commonTest.dependencies {
@@ -86,9 +89,6 @@ kotlin {
             // ==========================================
             // 🔥 LIBRARY KHUSUS ANDROID DI SINI 🔥
             // ==========================================
-            // Google Maps & Sensor GPS
-            //implementation("com.google.maps.android:maps-compose:2.14.0")
-            //implementation("com.google.android.gms:play-services-maps:18.2.0")
             implementation("com.google.android.gms:play-services-location:21.2.0")
 
             // Room Database Runtime & KTX
@@ -97,11 +97,13 @@ kotlin {
             implementation("androidx.room:room-ktx:$room_version")
 
             implementation("org.osmdroid:osmdroid-android:6.1.18")
+
+            implementation("dev.shreyaspatil.generativeai:generativeai-google:0.9.0-1.1.0")
         }
     }
 }
 
-// 🔥 2. KSP COMPILER ROOM (Pake "kspAndroid" Biar KMP Gak Bingung!) 🔥
+// 🔥 2. KSP COMPILER ROOM
 dependencies {
     add("kspAndroid", "androidx.room:room-compiler:2.6.1")
 }
@@ -117,6 +119,7 @@ android {
         versionCode = 1
         versionName = "1.0.0"
 
+        // 🔥 Narik API Key dari local.properties biar aman 🔥
         buildConfigField(
             "String",
             "GEMINI_API_KEY",

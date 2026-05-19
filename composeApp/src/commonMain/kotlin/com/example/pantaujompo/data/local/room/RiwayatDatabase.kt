@@ -25,8 +25,28 @@ interface RiwayatDao {
     @Query("DELETE FROM riwayat_lari WHERE id = :id")
     suspend fun hapusRiwayatById(id: Int)
 }
+@Entity(tableName = "riwayat_makanan")
+data class MakananEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val namaMakanan: String,
+    val protein: Int,
+    val karbo: Int,
+    val lemak: Int,
+    val info: String,
+    val tanggal: Long = System.currentTimeMillis()
+)
 
-@Database(entities = [RiwayatEntity::class], version = 2, exportSchema = false)
+@Dao
+interface MakananDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMakanan(makanan: MakananEntity)
+
+    @Query("SELECT * FROM riwayat_makanan ORDER BY tanggal DESC")
+    fun getAllMakanan(): Flow<List<MakananEntity>>
+}
+
+@Database(entities = [RiwayatEntity::class, MakananEntity::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun riwayatDao(): RiwayatDao
+    abstract fun makananDao(): MakananDao
 }

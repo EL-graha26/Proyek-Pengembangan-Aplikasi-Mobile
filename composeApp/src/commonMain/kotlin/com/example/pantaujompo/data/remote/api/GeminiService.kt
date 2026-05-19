@@ -1,133 +1,90 @@
 package com.example.pantaujompo.data.remote.api
 
-import com.example.pantaujompo.core.network.ApiConfig
-import com.example.pantaujompo.data.remote.dto.GeminiContent
-import com.example.pantaujompo.data.remote.dto.GeminiPart
-import com.example.pantaujompo.data.remote.dto.GeminiRequest
-import com.example.pantaujompo.data.remote.dto.GeminiResponse
-import com.example.pantaujompo.data.remote.dto.GenerationConfig
-import com.example.pantaujompo.data.remote.dto.getErrorMessage
-import com.example.pantaujompo.data.remote.dto.getTextContent
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.parameter
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
+import android.graphics.Bitmap
+import android.util.Base64
+import com.example.pantaujompo.data.remote.dto.GeminiDto
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.okhttp.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.request.*
+import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
+import kotlinx.serialization.json.*
+import java.io.ByteArrayOutputStream
 
-class GeminiService(private val client: HttpClient) {
-    
-    companion object {
-        private const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
-        private const val MODEL = "gemini-2.0-flash"
-    }
-    
-    suspend fun generateContent(
-        prompt: String,
-        systemPrompt: String? = null
-    ): Result<String> = runCatching {
-        val contents = mutableListOf<GeminiContent>()
-        
-        if (systemPrompt != null) {
-            contents.add(
-                GeminiContent(
-                    parts = listOf(GeminiPart(text = systemPrompt)),
-                    role = "user"
-                )
-            )
-            contents.add(
-                GeminiContent(
-                    parts = listOf(GeminiPart(text = "Baik, saya akan mengikuti instruksi tersebut.")),
-                    role = "model"
-                )
-            )
+class GeminiService {
+
+    // Bikin Ktor Client buat nembak API
+    private val client = HttpClient(OkHttp) {
+        install(ContentNegotiation) {
+            json(Json { ignoreUnknownKeys = true })
         }
-        
-        contents.add(
-            GeminiContent(
-                parts = listOf(GeminiPart(text = prompt)),
-                role = "user"
-            )
-        )
-        
-        val request = GeminiRequest(
-            contents = contents,
-            generationConfig = GenerationConfig(
-                temperature = 0.7,
-                maxOutputTokens = 1000
-            )
-        )
-        
-        val response: GeminiResponse = client.post("$BASE_URL/models/$MODEL:generateContent") {
-            contentType(ContentType.Application.Json)
-            parameter("key", ApiConfig.geminiApiKey)
-            setBody(request)
-        }.body()
-        
-        response.getErrorMessage()?.let { errorMsg ->
-            throw Exception(errorMsg)
-        }
-        
-        response.getTextContent() ?: throw Exception("Respons kosong dari AI")
     }
-}
 
-// ====================
-// System Prompts
-// ====================
+    suspend fun analisaNutrisi(inputText: String, capturedImage: Bitmap?, profil: String): GeminiDto {
+        return try {
+            val apiKey = "AIzaSyBlykIzXzPsSgKwv8kzD3A8Uty-hgbPfnw"
+            // Pakai versi 3.1-flash-lite langsung ke URL API-nya
+            val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=$apiKey"
 
-object SystemPrompts {
-    
-    val SUMMARIZER = """
-        Kamu adalah asisten yang ahli dalam merangkum teks.
-        Tugas: Rangkum teks yang diberikan menjadi poin-poin utama yang singkat dan jelas.
-        Rules:
-        - Gunakan Bahasa Indonesia
-        - Maksimal 3-5 poin utama
-        - Setiap poin maksimal 1-2 kalimat
-        - Fokus pada informasi paling penting
-        - Jangan menambahkan informasi yang tidak ada di teks asli
-    """.trimIndent()
-    
-    val IDEA_GENERATOR = """
-        Kamu adalah asisten kreatif yang membantu mengembangkan ide.
-        Tugas: Berikan 5 ide kreatif berdasarkan topik yang diberikan.
-        Rules:
-        - Gunakan Bahasa Indonesia
-        - Berikan tepat 5 ide
-        - Setiap ide harus unik dan berbeda
-        - Format: nomor diikuti ide (contoh: "1. Ide pertama")
-        - Ide harus praktis dan bisa diimplementasikan
-    """.trimIndent()
-    
-    val WRITING_IMPROVER = """
-        Kamu adalah editor profesional yang membantu memperbaiki tulisan.
-        Tugas: Perbaiki tulisan yang diberikan tanpa mengubah makna aslinya.
-        Rules:
-        - Gunakan Bahasa Indonesia yang baik dan benar
-        - Perbaiki grammar, ejaan, dan struktur kalimat
-        - Pertahankan gaya dan tone asli penulis
-        - Jangan menambahkan informasi baru
-        - Berikan HANYA hasil tulisan yang sudah diperbaiki, tanpa penjelasan
-    """.trimIndent()
-    
-    val TITLE_SUGGESTER = """
-        Kamu adalah asisten yang membantu membuat judul menarik.
-        Tugas: Berikan 1 saran judul yang singkat dan menarik berdasarkan konten yang diberikan.
-        Rules:
-        - Gunakan Bahasa Indonesia
-        - Judul maksimal 5-7 kata
-        - Judul harus mencerminkan isi konten
-        - Berikan HANYA judul, tanpa penjelasan atau tanda kutip
-    """.trimIndent()
-    
-    val TRANSLATOR = """
-        Kamu adalah penerjemah profesional.
-        Tugas: Terjemahkan teks yang diberikan ke bahasa target.
-        Rules:
-        - Pertahankan makna dan nuansa asli
-        - Gunakan bahasa yang natural, bukan literal
-        - Berikan HANYA hasil terjemahan, tanpa penjelasan
-    """.trimIndent()
+            val promptTeks = """
+            User Profile: $profil.
+            Analisis makanan ini. Jika ini foto, tebak nama makanannya.
+            Balas HANYA dengan format persis ini:
+            NAMA:[Nama Makanan]
+            PROTEIN:[angka]
+            KARBO:[angka]
+            LEMAK:[angka]
+            INFO:[Saran spesifik untuk profil di atas (diabetes/darah tinggi/porsi pas)]
+        """.trimIndent()
+
+            // Siapkan Data JSON
+            val partsList = mutableListOf<JsonObject>()
+            partsList.add(buildJsonObject { put("text", promptTeks) })
+
+            if (capturedImage != null) {
+                val stream = ByteArrayOutputStream()
+                capturedImage.compress(Bitmap.CompressFormat.JPEG, 80, stream)
+                val base64Image = Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
+
+                partsList.add(buildJsonObject {
+                    put("inlineData", buildJsonObject {
+                        put("mimeType", "image/jpeg")
+                        put("data", base64Image)
+                    })
+                })
+            }
+
+            val requestBody = buildJsonObject {
+                put("contents", buildJsonArray {
+                    add(buildJsonObject { put("parts", JsonArray(partsList)) })
+                })
+            }
+
+            // Tembak Server Gemini
+            val response: JsonObject = client.post(url) {
+                contentType(ContentType.Application.Json)
+                setBody(requestBody)
+            }.body()
+
+            // Ambil Teks Balasan
+            val balasan = response["candidates"]?.jsonArray?.get(0)?.jsonObject
+                ?.get("content")?.jsonObject
+                ?.get("parts")?.jsonArray?.get(0)?.jsonObject
+                ?.get("text")?.jsonPrimitive?.content ?: ""
+
+            // Ekstrak Angka
+            val protein = "PROTEIN:(\\d+)".toRegex().find(balasan)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+            val karbo = "KARBO:(\\d+)".toRegex().find(balasan)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+            val lemak = "LEMAK:(\\d+)".toRegex().find(balasan)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+            val info = "INFO:(.*)".toRegex(RegexOption.DOT_MATCHES_ALL).find(balasan)?.groupValues?.get(1)?.trim() ?: "Aman dikonsumsi."
+            val nama = "NAMA:(.*)".toRegex().find(balasan)?.groupValues?.get(1)?.trim() ?: "Makanan Tidak Dikenal"
+
+            GeminiDto(protein, karbo, lemak, info)
+
+        } catch (e: Exception) {
+            GeminiDto(0, 0, 0, "Error API: ${e.message}")
+        }
+    }
 }
