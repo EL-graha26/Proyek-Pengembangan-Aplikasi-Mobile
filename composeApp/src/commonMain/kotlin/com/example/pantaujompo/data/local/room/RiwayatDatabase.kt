@@ -6,11 +6,12 @@ import kotlinx.coroutines.flow.Flow
 @Entity(tableName = "riwayat_lari")
 data class RiwayatEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val jenis: String = "Lari", // Baru: Jalan, Lari, atau Sepeda
     val jarak: Double,
     val kalori: Int,
     val durasi: Int,
     val pace: String,
-    val tanggal: Long = System.currentTimeMillis(), // 🔥 PASTI KOMA DI SINI KETINGGALAN KAN KEMAREN? WKWK
+    val tanggal: Long = System.currentTimeMillis(),
     val ruteString: String
 )
 
@@ -25,6 +26,7 @@ interface RiwayatDao {
     @Query("DELETE FROM riwayat_lari WHERE id = :id")
     suspend fun hapusRiwayatById(id: Int)
 }
+
 @Entity(tableName = "riwayat_makanan")
 data class MakananEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
@@ -33,6 +35,7 @@ data class MakananEntity(
     val karbo: Int,
     val lemak: Int,
     val info: String,
+    val photoUri: String = "", // Baru: Untuk menampilkan foto makanan
     val tanggal: Long = System.currentTimeMillis()
 )
 
@@ -43,9 +46,13 @@ interface MakananDao {
 
     @Query("SELECT * FROM riwayat_makanan ORDER BY tanggal DESC")
     fun getAllMakanan(): Flow<List<MakananEntity>>
+
+    @Query("DELETE FROM riwayat_makanan WHERE id = :id")
+    suspend fun hapusMakananById(id: Int)
 }
 
-@Database(entities = [RiwayatEntity::class, MakananEntity::class], version = 3, exportSchema = false)
+// BUMP VERSION KE 4
+@Database(entities = [RiwayatEntity::class, MakananEntity::class], version = 4, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun riwayatDao(): RiwayatDao
     abstract fun makananDao(): MakananDao

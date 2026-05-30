@@ -27,6 +27,9 @@ class MainActivity : ComponentActivity() {
 
             // Sediain DAO-nya buat ditangkep sama ViewModel
             single { get<AppDatabase>().riwayatDao() }
+
+            // 🔥 INI OBATNYA BRAY! Tambahin makananDao di sini 🔥
+            single { get<AppDatabase>().makananDao() }
         }
 
         // 2. LOGIKA SUNTIK KOIN YANG BENAR!
@@ -39,7 +42,6 @@ class MainActivity : ComponentActivity() {
                 }
             )
         } else {
-            // 🔥 INI OBATNYA! 🔥
             // Kalau Koin udah nyala diem-diem di tempat lain, KITA SUNTIK PAKSA modul Android-nya!
             loadKoinModules(androidModule)
         }

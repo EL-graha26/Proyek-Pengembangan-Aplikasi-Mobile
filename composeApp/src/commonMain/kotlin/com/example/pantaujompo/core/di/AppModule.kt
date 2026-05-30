@@ -10,6 +10,9 @@ import com.example.pantaujompo.data.remote.api.GeminiService
 import com.example.pantaujompo.data.repository.ActivityRepositoryImpl
 import com.example.pantaujompo.domain.repository.ActivityRepository
 
+// 🔥 IMPORT ROOM DATABASE LO DI SINI 🔥
+import com.example.pantaujompo.data.local.room.AppDatabase
+
 // Import ViewModels
 import com.example.pantaujompo.presentation.screens.profil.ProfilViewModel
 import com.example.pantaujompo.presentation.screens.addedit.AddEditViewModel
@@ -33,26 +36,29 @@ val networkModule = module {
 
 // ==================== DATABASE MODULE ====================
 val databaseModule = module {
-    // SQLDelight (Database lama)
+    // SQLDelight (Database lama - masih dipertahankan untuk referensi/migrasi jika perlu)
     single {
         val driverFactory: DatabaseDriverFactory = get()
         NoteDatabase(driverFactory.createDriver())
     }
 
-    // 🔥 PENTING BUAT KMP 🔥
-    // Mesin Room Database dan DAO-nya GAK KITA BIKIN DI SINI.
-    // Kita bakal nembak (inject) dari AndroidMain lewat 'platformModules' di bawah!
+    // Mendaftarkan DAO dari Room Database ke Koin DI
+    // Koin akan otomatis mencari instance AppDatabase yang telah di-inject dari platform-specific code (AndroidMain)
+    single { get<AppDatabase>().riwayatDao() }
+    single { get<AppDatabase>().makananDao() }
 }
 
 // ==================== PREFERENCES MODULE ====================
 val preferencesModule = module {
+    // Inisialisasi DataStore untuk penyimpanan preferensi lokal (Key-Value)
     single { get<DataStoreFactory>().create() }
     single { UserPreferences(get()) }
 }
 
 // ==================== REPOSITORY MODULE ====================
 val repositoryModule = module {
-    // Mendaftarkan ActivityRepositoryImpl ke Koin DI
+    // Mendaftarkan ActivityRepositoryImpl ke Koin DI, yang mengimplementasikan ActivityRepository
+    // Menggunakan singleOf untuk membuat singleton instance secara otomatis
     singleOf(::ActivityRepositoryImpl) bind ActivityRepository::class
 }
 

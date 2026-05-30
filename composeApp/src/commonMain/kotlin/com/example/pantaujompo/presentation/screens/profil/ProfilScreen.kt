@@ -1,254 +1,425 @@
 package com.example.pantaujompo.presentation.screens.profil
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import android.Manifest
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.*
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import com.example.pantaujompo.data.local.datastore.UserPreferences
+import com.example.pantaujompo.presentation.screens.home.DashboardViewModel
+import com.example.pantaujompo.presentation.theme.*
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
+import org.koin.compose.viewmodel.koinViewModel
 import java.util.Locale
 import kotlin.math.pow
-
-// 🔥 IMPORT VIEWMODEL & KOIN BUAT DATA REALTIME 🔥
-import org.koin.compose.viewmodel.koinViewModel
-import com.example.pantaujompo.presentation.screens.home.DashboardViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfilScreen(
-    viewModel: DashboardViewModel = koinViewModel()
+    onNavigateToSettings: () -> Unit = {},
+    profilViewModel: ProfilViewModel = koinViewModel(),
+    dashboardViewModel: DashboardViewModel = koinViewModel(),
+    userPreferences: UserPreferences = koinInject()
 ) {
-    val scrollState = rememberScrollState()
+    val language by userPreferences.language.collectAsState(initial = "id")
+    fun str(key: String) = com.example.pantaujompo.core.util.AppStrings.get(key, language)
 
-    // Ambil data riwayat realtime dari database
-    val daftarRiwayat by viewModel.riwayatList.collectAsState(initial = emptyList())
+    val quotes = listOf(
+        str("quote_1"),
+        str("quote_2"),
+        str("quote_3"),
+        str("quote_4"),
+        str("quote_5"),
+        str("quote_6")
+    )
+    val dynamicQuote = remember(language) { quotes.random() }
 
-    // Kalkulasi Total Data Realtime
+    val coroutineScope = rememberCoroutineScope()
+    val daftarRiwayat by dashboardViewModel.riwayatList.collectAsState(initial = emptyList())
+    val savedImageUri by userPreferences.profileImageUri.collectAsState(initial = "")
+
+    val isDark = MaterialTheme.colorScheme.background == DarkBackground
+    val textPrimary = MaterialTheme.colorScheme.onBackground
+    val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
+    val accentColor = MaterialTheme.colorScheme.primary
+    val surfaceColor = if (isDark) Color(0xFF151515) else MaterialTheme.colorScheme.surface
+
+    // Computed stats
     val totalKm = daftarRiwayat.sumOf { it.jarak }
     val totalKalori = daftarRiwayat.sumOf { it.kalori }
     val totalWaktu = daftarRiwayat.sumOf { it.durasi }
 
-    // State untuk input Biofisik
-    var usia by remember { mutableStateOf("22") }
-    var berat by remember { mutableStateOf("60") }
-    var tinggi by remember { mutableStateOf("165") }
-
-    // Hitung BMI Otomatis
-    val bmi = remember(berat, tinggi) {
-        val b = berat.toFloatOrNull() ?: 0f
-        val t = (tinggi.toFloatOrNull() ?: 1f) / 100f
+    val bmi = remember(profilViewModel.beratKg, profilViewModel.tinggiCm) {
+        val b = profilViewModel.beratKg.toFloatOrNull() ?: 0f
+        val t = (profilViewModel.tinggiCm.toFloatOrNull() ?: 1f) / 100f
         if (t > 0f && b > 0f) b / t.pow(2) else 0f
     }
-
     val (bmiKategori, bmiWarna) = when {
-        bmi == 0f -> "ISI DATA" to Color.Gray
-        bmi < 18.5f -> "KURUS" to Color(0xFF00BCD4) // Biru
-        bmi < 25f -> "IDEAL" to Color(0xFF00FF00) // Hijau Neon
-        bmi < 30f -> "OVERWEIGHT" to Color(0xFFFFC107) // Kuning
-        else -> "OBESITAS" to Color(0xFFFF3B30) // Merah
+        bmi == 0f -> str("belum_diisi") to Color.Gray
+        bmi < 18.5f -> str("kurus") to Color(0xFF00BCD4)
+        bmi < 25f -> str("ideal") to Color(0xFF00E676)
+        bmi < 30f -> str("overweight") to Color(0xFFFFC107)
+        else -> str("obesitas") to Color(0xFFFF5252)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF0D0D0D))
-            .verticalScroll(scrollState)
-            .padding(horizontal = 24.dp)
-    ) {
-        // ==================== 1. JUDUL PALING ATAS ====================
-        Spacer(modifier = Modifier.height(48.dp))
-        Text(
-            text = "PROFIL PENGGUNA",
-            color = Color.White,
-            fontWeight = FontWeight.Black,
-            fontSize = 22.sp,
-            letterSpacing = 1.sp
-        )
-        Spacer(modifier = Modifier.height(24.dp))
+    val context = androidx.compose.ui.platform.LocalContext.current
 
-        // ==================== 2. KARTU IDENTITAS & STATISTIK ====================
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF151515)),
-            border = BorderStroke(1.dp, Color.White.copy(0.05f))
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp).fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(90.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF0D0D0D))
-                        .border(2.dp, Color(0xFF00FF00), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("👨‍💻", fontSize = 40.sp)
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Pradana Figo", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("Target: Peningkatan Kebugaran & Postur", color = Color.Gray, fontSize = 13.sp)
+    // PP State - use savedUri from DataStore as initial, local bitmap for camera preview
+    var localBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var showPpDialog by remember { mutableStateOf(false) }
 
-                Spacer(modifier = Modifier.height(32.dp))
+    fun saveBitmapToCache(bitmap: android.graphics.Bitmap): String? {
+        return try {
+            val cacheDir = context.cacheDir
+            val file = java.io.File(cacheDir, "profile_pic_${System.currentTimeMillis()}.jpg")
+            val out = java.io.FileOutputStream(file)
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out)
+            out.flush()
+            out.close()
+            Uri.fromFile(file).toString()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
 
-                // DATA REALTIME STATISTIK
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    ProfilQuickStat(icon = Icons.Default.Timeline, value = String.format(Locale.US, "%.1f", totalKm), label = "Km Lari", color = Color(0xFF00BCD4))
-                    ProfilQuickStat(icon = Icons.Default.LocalFireDepartment, value = "$totalKalori", label = "Kalori", color = Color(0xFFFFA500))
-                    ProfilQuickStat(icon = Icons.Default.AccessTime, value = "${totalWaktu}m", label = "Waktu", color = Color(0xFF00FF00))
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri != null) {
+            localBitmap = null
+            coroutineScope.launch {
+                userPreferences.setProfileImage(uri.toString())
+            }
+        }
+    }
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
+        if (bitmap != null) {
+            localBitmap = bitmap
+            val savedUri = saveBitmapToCache(bitmap)
+            if (savedUri != null) {
+                coroutineScope.launch {
+                    userPreferences.setProfileImage(savedUri)
                 }
             }
         }
+    }
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) cameraLauncher.launch(null)
+    }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // ==================== 3. KARTU BIOFISIK & BMI ====================
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF151515)),
-            border = BorderStroke(1.dp, Color.White.copy(0.05f))
+    MeshBackground(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
         ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Text("PARAMETER BIOFISIK", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(48.dp))
 
-                // 🔥 INPUT SEJAJAR 3 (BALIK KE SELERA LO YANG RAPI BRAY!) 🔥
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    PremiumTextField(value = usia, onValueChange = { usia = it }, label = "Usia", modifier = Modifier.weight(1f))
-                    PremiumTextField(value = berat, onValueChange = { berat = it }, label = "Berat (kg)", modifier = Modifier.weight(1f))
-                    PremiumTextField(value = tinggi, onValueChange = { tinggi = it }, label = "Tinggi (cm)", modifier = Modifier.weight(1f))
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(str("profil"), color = textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 28.sp)
+                    Text("Pantau Jompo", color = accentColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // 🔥 INI DIA PERUBAHAN SUPER SEKSI-NYA BRAY! (DEDICATED SCORE BOX) 🔥
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFF0A0A0A)) // Background lebih gelap dari kartunya biar "masuk" ke dalem
-                        .border(1.dp, Color.White.copy(0.03f), RoundedCornerShape(16.dp))
-                        .padding(vertical = 20.dp, horizontal = 24.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                IconButton(onClick = { onNavigateToSettings() }) {
+                    Box(
+                        modifier = Modifier.size(44.dp).clip(CircleShape).background(surfaceColor)
+                            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text("INDEKS MASSA TUBUH", color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // Angka BMI Super Clean
-                        Text(
-                            text = String.format(Locale.US, "%.1f", bmi),
-                            color = Color.White,
-                            fontSize = 42.sp,
-                            fontWeight = FontWeight.Black
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // Pill Badge Status (Nyatu di bawah angka)
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(bmiWarna.copy(alpha = 0.15f))
-                                .border(1.dp, bmiWarna.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
-                                .padding(horizontal = 16.dp, vertical = 6.dp)
-                        ) {
-                            Text(bmiKategori, color = bmiWarna, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        // Bar Pelangi sebagai fondasi elegan di dalam kotak
-                        Box(modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp)
-                            .clip(CircleShape)
-                            .background(Brush.horizontalGradient(listOf(Color(0xFF00BCD4), Color(0xFF00FF00), Color(0xFFFFC107), Color(0xFFFF3B30))))
-                        )
+                        Icon(Icons.Default.Settings, null, tint = textSecondary, modifier = Modifier.size(20.dp))
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
-                // ==================== 4. TOMBOL SAVE ELEGAN ====================
-                Button(
-                    onClick = { /* TODO: Simpan Data */ },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .shadow(elevation = 12.dp, spotColor = Color(0xFF00FF00).copy(0.2f), shape = RoundedCornerShape(16.dp)),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00CC44))
-                ) {
-                    Icon(Icons.Default.Save, contentDescription = null, tint = Color.Black, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("SIMPAN PERUBAHAN", color = Color.Black, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, letterSpacing = 1.sp)
+            // ===== PROFILE CARD =====
+            Box(
+                modifier = Modifier.fillMaxWidth()
+                    .background(surfaceColor, RoundedCornerShape(28.dp))
+                    .border(1.dp, accentColor.copy(0.25f), RoundedCornerShape(28.dp))
+                    .padding(24.dp)
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    // Avatar
+                    Box(contentAlignment = Alignment.BottomEnd) {
+                        Box(
+                            modifier = Modifier.size(100.dp).clip(CircleShape)
+                                .background(if (isDark) Color(0xFF1E1E1E) else Color(0xFFF0F0F0))
+                                .border(3.dp, accentColor, CircleShape)
+                                .clickable { showPpDialog = true },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            when {
+                                localBitmap != null -> Image(
+                                    bitmap = localBitmap!!.asImageBitmap(),
+                                    contentDescription = "PP",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape)
+                                )
+                                savedImageUri.isNotBlank() -> AsyncImage(
+                                    model = savedImageUri,
+                                    contentDescription = "PP",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape)
+                                )
+                                else -> Icon(Icons.Default.Person, null, tint = accentColor, modifier = Modifier.size(48.dp))
+                            }
+                        }
+                        // Edit badge
+                        Box(
+                            modifier = Modifier.size(30.dp).clip(CircleShape).background(accentColor),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.CameraAlt, null, tint = Color.Black, modifier = Modifier.size(15.dp))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(str("ganti_foto_profil"), color = accentColor, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable { showPpDialog = true })
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Name field
+                    OutlinedTextField(
+                        value = profilViewModel.nama,
+                        onValueChange = { profilViewModel.nama = it },
+                        placeholder = { Text(str("nama_pengguna"), color = textSecondary, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        textStyle = LocalTextStyle.current.copy(
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = textPrimary
+                        ),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = accentColor,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedTextColor = textPrimary,
+                            unfocusedTextColor = textPrimary,
+                            cursorColor = accentColor
+                        ),
+                        shape = RoundedCornerShape(14.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        "\"$dynamicQuote\"",
+                        color = textSecondary,
+                        fontSize = 12.sp,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Stats
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        ProfilStatItem("${String.format(Locale.US, "%.1f", totalKm)} km", str("total_jarak"), Color(0xFF00BCD4))
+                        Box(modifier = Modifier.width(1.dp).height(40.dp).background(MaterialTheme.colorScheme.outline))
+                        ProfilStatItem("$totalKalori", str("kalori"), Color(0xFFFF9100))
+                        Box(modifier = Modifier.width(1.dp).height(40.dp).background(MaterialTheme.colorScheme.outline))
+                        ProfilStatItem("${totalWaktu}m", str("total_waktu"), accentColor)
+                    }
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // ===== BIOMETRICS CARD =====
+            Box(
+                modifier = Modifier.fillMaxWidth()
+                    .background(surfaceColor, RoundedCornerShape(28.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(28.dp))
+                    .padding(24.dp)
+            ) {
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.MonitorHeart, null, tint = accentColor, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(str("data_biometrik"), color = textSecondary, fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        ProfilInputField(str("usia"), profilViewModel.usia, { profilViewModel.usia = it }, str("th"), Modifier.weight(1f), accentColor, textPrimary, textSecondary)
+                        ProfilInputField(str("berat"), profilViewModel.beratKg, { profilViewModel.beratKg = it }, str("kg"), Modifier.weight(1f), accentColor, textPrimary, textSecondary)
+                        ProfilInputField(str("tinggi"), profilViewModel.tinggiCm, { profilViewModel.tinggiCm = it }, str("cm"), Modifier.weight(1f), accentColor, textPrimary, textSecondary)
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Kotak Indeks Massa Tubuh (BMI)
+                    Box(
+                        modifier = Modifier.fillMaxWidth()
+                            .background(
+                                if (isDark) Color(0xFF0D0D0D) else Color(0xFFF5F5F5),
+                                RoundedCornerShape(12.dp)
+                            )
+                            .border(1.dp, bmiWarna.copy(0.4f), RoundedCornerShape(12.dp))
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            // Judul BMI
+                            Text(str("indeks_massa_tubuh"), color = textSecondary, fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            
+                            // Nilai BMI diperkecil agar tidak terlalu besar
+                            Text(
+                                if (bmi > 0f) String.format(Locale.US, "%.1f", bmi) else "-",
+                                color = textPrimary, fontSize = 24.sp, fontWeight = FontWeight.Black
+                            )
+                            
+                            // Kategori BMI (Ideal, Obesitas, dll)
+                            Box(
+                                modifier = Modifier.background(bmiWarna, RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text(bmiKategori, color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 9.sp)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Button(
+                        onClick = { profilViewModel.saveProfile() },
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = accentColor)
+                    ) {
+                        Icon(Icons.Default.Save, null, tint = Color.Black, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(str("simpan_profil"), color = Color.Black, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(100.dp))
         }
+    }
 
-        Spacer(modifier = Modifier.height(120.dp))
+    // PP Dialog
+    if (showPpDialog) {
+        AlertDialog(
+            onDismissRequest = { showPpDialog = false },
+            title = {
+                Text(str("ganti_foto_profil"), color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            },
+            containerColor = if (isDark) Color(0xFF1A1A1A) else MaterialTheme.colorScheme.surface,
+            text = {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            showPpDialog = false
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        }.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(accentColor.copy(0.15f)), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.CameraAlt, null, tint = accentColor, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(str("buka_kamera"), color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+                            Text(str("preview_saja"), color = textSecondary, fontSize = 11.sp)
+                        }
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            showPpDialog = false
+                            galleryLauncher.launch("image/*")
+                        }.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(Color(0xFF00BCD4).copy(0.15f)), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Photo, null, tint = Color(0xFF00BCD4), modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(str("pilih_dari_galeri"), color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+                            Text(str("tersimpan_permanen"), color = accentColor, fontSize = 11.sp)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showPpDialog = false }) {
+                    Text(str("batal"), color = textSecondary)
+                }
+            }
+        )
     }
 }
 
-// Komponen Metrik Data Realtime
 @Composable
-fun ProfilQuickStat(icon: ImageVector, value: String, label: String, color: Color) {
+fun ProfilStatItem(value: String, label: String, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(26.dp))
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(value, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
-        Text(label, color = Color.Gray, fontSize = 11.sp)
+        Text(value, color = color, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
     }
 }
 
-// Custom Input Field Elegan (Sejajar 3)
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PremiumTextField(value: String, onValueChange: (String) -> Unit, label: String, modifier: Modifier = Modifier) {
+fun ProfilInputField(
+    label: String, value: String, onValueChange: (String) -> Unit, unit: String,
+    modifier: Modifier, accentColor: Color, textPrimary: Color, textSecondary: Color
+) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label, fontSize = 10.sp, color = Color.Gray) },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        textStyle = LocalTextStyle.current.copy(color = Color.White, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold, fontSize = 16.sp),
-        modifier = modifier.height(60.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = Color(0xFF00FF00),
-            unfocusedBorderColor = Color.White.copy(0.1f),
-            focusedContainerColor = Color(0xFF111111),
-            unfocusedContainerColor = Color(0xFF111111),
-            cursorColor = Color(0xFF00FF00)
+        label = { Text("$label ($unit)", fontSize = 9.sp) },
+        modifier = modifier,
+        singleLine = true,
+        textStyle = LocalTextStyle.current.copy(
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            color = textPrimary
         ),
-        singleLine = true
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = textPrimary,
+            unfocusedTextColor = textPrimary,
+            focusedBorderColor = accentColor,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+            focusedContainerColor = Color.Transparent,
+            unfocusedContainerColor = Color.Transparent,
+            focusedLabelColor = accentColor,
+            unfocusedLabelColor = textSecondary,
+            cursorColor = accentColor
+        ),
+        shape = RoundedCornerShape(14.dp)
     )
 }
