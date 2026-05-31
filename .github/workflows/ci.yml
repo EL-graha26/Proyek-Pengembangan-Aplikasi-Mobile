@@ -4,11 +4,11 @@ on:
   push:
     branches:
       - main
-      - project/123140200-123140063-PantauJompo
+      - projeck/123140063-123140200-PantauJompo
   pull_request:
     branches:
       - main
-      - project/123140200-123140063-PantauJompo
+      - projeck/123140063-123140200-PantauJompo
 
 jobs:
   build:
