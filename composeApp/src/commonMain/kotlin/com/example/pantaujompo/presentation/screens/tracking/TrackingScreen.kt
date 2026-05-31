@@ -157,15 +157,8 @@ fun TrackingScreen(
         }
     }
 
-    // Timer Coroutine
-    LaunchedEffect(isRunning) {
-        if (isRunning) {
-            while(true) {
-                kotlinx.coroutines.delay(1000)
-                TrackingManager.incrementTime()
-            }
-        }
-    }
+    // Timer Coroutine (DIHAPUS KARENA SUDAH DI-HANDLE OLEH LocationTrackingService)
+    // Supaya waktu tidak berjalan 2x lipat lebih cepat.
 
     // Location Updates Coroutine
     LaunchedEffect(hasLocationPermission, isGpsEnabled) {
