@@ -14,15 +14,16 @@ import platform.Foundation.NSBundle
  * Atau untuk development, bisa hardcode langsung (JANGAN untuk production!)
  */
 actual object ApiConfig {
-    actual val geminiApiKey: String
+
+    actual val geminiApiKeyNutrisi: String
         get() {
-            // Try to get from Info.plist
-            val plistValue = NSBundle.mainBundle.objectForInfoDictionaryKey("GEMINI_API_KEY") as? String
-            
-            return plistValue ?: run {
-                // Fallback untuk development - GANTI dengan API key Anda
-                // WARNING: Jangan commit API key ke repository!
-                ""
-            }
+            // Ambil langsung dari Info.plist Xcode
+            return NSBundle.mainBundle.objectForInfoDictionaryKey("GEMINI_API_KEY_NUTRISI") as? String ?: ""
+        }
+
+    actual val geminiApiKeyChat: String
+        get() {
+            // Ambil langsung dari Info.plist Xcode
+            return NSBundle.mainBundle.objectForInfoDictionaryKey("GEMINI_API_KEY_CHAT") as? String ?: ""
         }
 }

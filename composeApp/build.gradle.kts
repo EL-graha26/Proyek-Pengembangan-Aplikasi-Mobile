@@ -119,11 +119,16 @@ android {
         versionCode = 1
         versionName = "1.0.0"
 
-        // 🔥 Narik API Key dari local.properties biar aman 🔥
+        // Narik DUA API Key dari local.properties biar aman
         buildConfigField(
             "String",
-            "GEMINI_API_KEY",
-            "\"${localProperties.getProperty("GEMINI_API_KEY", "")}\""
+            "GEMINI_API_KEY_NUTRISI",
+            "\"${localProperties.getProperty("GEMINI_API_KEY_NUTRISI", "")}\""
+        )
+        buildConfigField(
+            "String",
+            "GEMINI_API_KEY_CHAT",
+            "\"${localProperties.getProperty("GEMINI_API_KEY_CHAT", "")}\""
         )
     }
 

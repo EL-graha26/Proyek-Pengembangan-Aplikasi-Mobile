@@ -24,16 +24,15 @@ import java.util.concurrent.TimeUnit
  */
 class GeminiService {
 
-    // Kunci API diambil dari ApiConfig (local.properties)
-    private val apiKeyNutrisi = com.example.pantaujompo.core.network.ApiConfig.geminiApiKey
+    // Kunci API untuk AI Pemindai Nutrisi (Akun A)
+    private val apiKeyNutrisi = com.example.pantaujompo.core.network.ApiConfig.geminiApiKeyNutrisi
     private val modelNutrisi = "gemini-3.5-flash"
     private val urlNutrisi = "https://generativelanguage.googleapis.com/v1beta/models/$modelNutrisi:generateContent?key=$apiKeyNutrisi"
 
-    // Kunci API untuk Chat
-    private val apiKeyChat = com.example.pantaujompo.core.network.ApiConfig.geminiApiKey
+    // Kunci API untuk Chat (Akun B)
+    private val apiKeyChat = com.example.pantaujompo.core.network.ApiConfig.geminiApiKeyChat
     private val modelChat = "gemini-3.1-flash-lite"
     private val urlChat = "https://generativelanguage.googleapis.com/v1beta/models/$modelChat:generateContent?key=$apiKeyChat"
-
 
     // Konfigurasi HTTP Client dengan timeout 60 detik
     private val client = HttpClient(OkHttp) {
