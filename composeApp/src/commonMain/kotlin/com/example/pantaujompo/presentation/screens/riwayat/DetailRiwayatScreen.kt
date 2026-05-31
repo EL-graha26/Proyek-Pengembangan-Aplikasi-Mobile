@@ -5,16 +5,23 @@ import android.graphics.Paint
 import android.graphics.Color as AndroidColor
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.DirectionsBike
@@ -26,12 +33,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import coil3.compose.AsyncImage
 import com.example.pantaujompo.data.local.room.RiwayatEntity
 import org.osmdroid.config.Configuration
 import org.osmdroid.util.GeoPoint
@@ -52,6 +61,7 @@ import com.example.pantaujompo.presentation.theme.glassCard
 import com.example.pantaujompo.core.util.AppStrings
 import com.example.pantaujompo.presentation.theme.DarkBackground
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailRiwayatScreen(
     riwayat: RiwayatEntity,
@@ -62,6 +72,8 @@ fun DetailRiwayatScreen(
     val language by viewModel.languageState.collectAsState()
     val context = LocalContext.current
     val isDark = MaterialTheme.colorScheme.background == DarkBackground
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val textPrimary = MaterialTheme.colorScheme.onSurface
 
     // Tweak Performa RAM peta history
     remember {
@@ -76,6 +88,7 @@ fun DetailRiwayatScreen(
     val mapView = remember { MapView(context) }
     var useSatellite by remember { mutableStateOf(false) }
     var isMapInitialized by remember { mutableStateOf(false) }
+    var isExpanded by remember { mutableStateOf(riwayat.photoUri.isNullOrBlank()) }
 
     val standardTileSource = remember {
         object : OnlineTileSourceBase("GoogleMaps", 1, 20, 256, ".png", arrayOf("https://mt0.google.com/vt/lyrs=m&hl=id&z=", "https://mt1.google.com/vt/lyrs=m&hl=id&z=", "https://mt2.google.com/vt/lyrs=m&hl=id&z=", "https://mt3.google.com/vt/lyrs=m&hl=id&z=")) {
@@ -114,10 +127,142 @@ fun DetailRiwayatScreen(
         else -> if (language == "en") "Running" else "Lari / Jogging"
     }
 
-    MeshBackground(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // ==================== 1. PETA GOOGLE MAPS SUPER HD ====================
-            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+    val scaffoldState = rememberBottomSheetScaffoldState(
+        bottomSheetState = rememberStandardBottomSheetState(
+            initialValue = SheetValue.PartiallyExpanded,
+            skipHiddenState = true
+        )
+    )
+
+    BottomSheetScaffold(
+        scaffoldState = scaffoldState,
+        sheetPeekHeight = 350.dp,
+        sheetContainerColor = surfaceColor.copy(alpha = 0.98f),
+        sheetShape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+        sheetContent = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .navigationBarsPadding()
+            ) {
+                // Header (No toggle needed anymore since it's a bottom sheet)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(jenisColor.copy(0.15f)), contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = when (riwayat.jenis?.lowercase()) {
+                                "sepeda" -> Icons.Default.DirectionsBike
+                                "jalan" -> Icons.Default.DirectionsWalk
+                                else -> Icons.Default.DirectionsRun
+                            },
+                            null,
+                            tint = jenisColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        val displayTitle = riwayat.judul.ifBlank { "$jenisLabel • ${AppStrings.get("detail_aktivitas", language)}" }
+                        Text(displayTitle, color = textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+                        Text("${AppStrings.get("waktu_mulai", language)}: $tanggalFormat", color = Color.Gray, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                    }
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 500.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    if (riwayat.deskripsi.isNotBlank()) {
+                        Text(riwayat.deskripsi, color = textPrimary.copy(alpha = 0.8f), fontSize = 14.sp)
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            DetailMetricItem(label = "JARAK TEMPUH", value = String.format(Locale.US, "%.2f", riwayat.jarak), unit = "Km", textColor = textPrimary)
+                            DetailMetricItem(label = "RATA-RATA PACE", value = riwayat.pace, unit = "/Km", textColor = textPrimary)
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            DetailMetricItem(label = "WAKTU TOTAL", value = "${riwayat.durasi}", unit = "Menit", textColor = textPrimary)
+                            DetailMetricItem(label = "KALORI TERBAKAR", value = "${riwayat.kalori}", unit = "Kcal", textColor = textPrimary)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = textPrimary.copy(alpha = 0.08f))
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Menampilkan Multiple Photos jika ada
+                    if (!riwayat.photoUri.isNullOrBlank()) {
+                        val uris = riwayat.photoUri.split("|").filter { it.isNotBlank() }
+                        LazyRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(uris) { uri ->
+                                Box(
+                                    modifier = Modifier
+                                        .fillParentMaxWidth(0.85f)
+                                        .height(240.dp)
+                                        .clip(RoundedCornerShape(24.dp))
+                                        .border(1.dp, Color.Gray.copy(alpha=0.2f), RoundedCornerShape(24.dp))
+                                ) {
+                                    AsyncImage(
+                                        model = uri,
+                                        contentDescription = "Foto Aktivitas",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
+                    
+                    var showDeleteConfirm by remember { mutableStateOf(false) }
+                    OutlinedButton(
+                        onClick = { showDeleteConfirm = true },
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFF5252)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF5252).copy(0.5f))
+                    ) {
+                        Icon(Icons.Default.DeleteForever, null, tint = Color(0xFFFF5252), modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("HAPUS RIWAYAT INI", color = Color(0xFFFF5252), fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    }
+
+                    if (showDeleteConfirm) {
+                        AlertDialog(
+                            onDismissRequest = { showDeleteConfirm = false },
+                            title = { Text("Hapus Aktivitas?", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground) },
+                            text = { Text("Riwayat ini akan dihapus permanen dan tidak bisa dikembalikan.", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                            confirmButton = {
+                                Button(
+                                    onClick = { onDeleteClick(); showDeleteConfirm = false },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5252))
+                                ) { Text("Hapus", color = Color.White, fontWeight = FontWeight.Bold) }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showDeleteConfirm = false }) { Text("Batal", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            },
+                            containerColor = if (isDark) Color(0xFF1A1A1A) else MaterialTheme.colorScheme.surface
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+            }
+        }
+    ) { paddingValues ->
+        MeshBackground(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                // ==================== 1. PETA GOOGLE MAPS SUPER HD ====================
+            Box(modifier = Modifier.fillMaxWidth()) {
                 AndroidView(
                     factory = {
                         mapView.apply {
@@ -194,152 +339,65 @@ fun DetailRiwayatScreen(
                 Column(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
-                        .padding(end = 12.dp),
+                        .padding(end = 12.dp, bottom = 120.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Box(
                         modifier = Modifier
                             .size(48.dp)
-                            .background(Color(0xFF0C0C0C).copy(alpha = 0.95f), CircleShape)
-                            .border(1.5.dp, if (useSatellite) Color.Green.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.25f), CircleShape)
+                            .background(surfaceColor.copy(alpha = 0.95f), CircleShape)
+                            .border(1.5.dp, if (useSatellite) Color.Green.copy(alpha = 0.6f) else textPrimary.copy(alpha = 0.25f), CircleShape)
                             .clickable { useSatellite = !useSatellite; isMapInitialized = false },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Layers,
                             contentDescription = "Layers",
-                            tint = if (useSatellite) Color.Green else Color.White,
+                            tint = if (useSatellite) Color.Green else textPrimary,
                             modifier = Modifier.size(22.dp)
                         )
                     }
-
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .background(Color(0xFF0C0C0C).copy(alpha = 0.95f), CircleShape)
-                            .border(1.5.dp, Color.White.copy(alpha = 0.25f), CircleShape)
-                            .clickable { mapView.controller.zoomIn() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.Add, null, tint = Color.White, modifier = Modifier.size(24.dp))
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .background(Color(0xFF0C0C0C).copy(alpha = 0.95f), CircleShape)
-                            .border(1.5.dp, Color.White.copy(alpha = 0.25f), CircleShape)
-                            .clickable { mapView.controller.zoomOut() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.Remove, null, tint = Color.White, modifier = Modifier.size(24.dp))
-                    }
                 }
             }
 
-            // ==================== 3. KARTU STATISTIK (BAWAH PETA) ====================
-            Column(
+            // ==================== 2. TOMBOL BACK (NGAMBANG) ====================
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-                    .background(Color(0xFF0A0A0A).copy(alpha = 0.97f))
-                    .padding(horizontal = 24.dp, vertical = 24.dp)
-                    .navigationBarsPadding()
+                    .padding(top = 48.dp, start = 24.dp)
+                    .size(44.dp)
+                    .background(surfaceColor.copy(alpha = 0.95f), CircleShape)
+                    .border(1.dp, textPrimary.copy(alpha = 0.15f), CircleShape)
+                    .clickable { onBackClick() },
+                contentAlignment = Alignment.Center
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(jenisColor.copy(0.15f)), contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = when (riwayat.jenis?.lowercase()) {
-                                "sepeda" -> Icons.Default.DirectionsBike
-                                "jalan" -> Icons.Default.DirectionsWalk
-                                else -> Icons.Default.DirectionsRun
-                            },
-                            null,
-                            tint = jenisColor,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        Text("$jenisLabel • ${AppStrings.get("detail_aktivitas", language)}", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
-                        Text("${AppStrings.get("waktu_mulai", language)}: $tanggalFormat", color = Color.Gray, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-                HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        DetailMetricItem(label = "JARAK TEMPUH", value = String.format(Locale.US, "%.2f", riwayat.jarak), unit = "Km")
-                        DetailMetricItem(label = "RATA-RATA PACE", value = riwayat.pace, unit = "/Km")
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        DetailMetricItem(label = "WAKTU TOTAL", value = "${riwayat.durasi}", unit = "Menit")
-                        DetailMetricItem(label = "KALORI TERBAKAR", value = "${riwayat.kalori}", unit = "Kcal")
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                var showDeleteConfirm by remember { mutableStateOf(false) }
-                OutlinedButton(
-                    onClick = { showDeleteConfirm = true },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFF5252)),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF5252).copy(0.5f))
-                ) {
-                    Icon(Icons.Default.DeleteForever, null, tint = Color(0xFFFF5252), modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("HAPUS RIWAYAT INI", color = Color(0xFFFF5252), fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                }
-
-                if (showDeleteConfirm) {
-                    AlertDialog(
-                        onDismissRequest = { showDeleteConfirm = false },
-                        title = { Text("Hapus Aktivitas?", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground) },
-                        text = { Text("Riwayat ini akan dihapus permanen dan tidak bisa dikembalikan.", color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                        confirmButton = {
-                            Button(
-                                onClick = { onDeleteClick(); showDeleteConfirm = false },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5252))
-                            ) { Text("Hapus", color = Color.White, fontWeight = FontWeight.Bold) }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showDeleteConfirm = false }) { Text("Batal", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                        },
-                        containerColor = if (isDark) Color(0xFF1A1A1A) else MaterialTheme.colorScheme.surface
-                    )
-                }
+                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = textPrimary, modifier = Modifier.size(22.dp))
             }
-        }
-
-        // ==================== 2. TOMBOL BACK (NGAMBANG) ====================
-        Box(
-            modifier = Modifier
-                .padding(top = 48.dp, start = 20.dp)
-                .size(44.dp)
-                .glassCard(shape = CircleShape)
-                .clickable { onBackClick() },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = if (isDark) Color.White else Color.Black)
         }
     }
+}
 }
 
 // Fungsi Desain Metrik
 @Composable
-fun DetailMetricItem(label: String, value: String, unit: String) {
+fun DetailMetricItem(label: String, value: String, unit: String, textColor: Color) {
     Column(modifier = Modifier.width(150.dp)) {
-        Text(label, color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            label,
+            color = Color.Gray,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp
+        )
+        Spacer(modifier = Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.Bottom) {
-            Text(value, color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
+            Text(value, color = textColor, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
             Spacer(modifier = Modifier.width(4.dp))
-            Text(unit, color = Color.Gray, fontSize = 14.sp, modifier = Modifier.padding(bottom = 5.dp))
+            Text(
+                unit,
+                color = Color.Gray,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(bottom = 5.dp)
+            )
         }
     }
 }

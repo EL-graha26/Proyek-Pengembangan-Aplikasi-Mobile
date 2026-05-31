@@ -19,6 +19,7 @@ class ProfilViewModel(
     var usia by mutableStateOf("")
     var beratKg by mutableStateOf("")
     var tinggiCm by mutableStateOf("")
+    var gender by mutableStateOf("Laki-laki")
 
     init {
         // PAKE collectLatest BIAR DATANYA UPDATE REAL-TIME!
@@ -33,6 +34,9 @@ class ProfilViewModel(
         }
         viewModelScope.launch {
             userPreferences.userHeight.collectLatest { tinggiCm = if (it != 0f) it.toString() else "" }
+        }
+        viewModelScope.launch {
+            userPreferences.userGender.collectLatest { gender = it }
         }
     }
 
@@ -63,7 +67,8 @@ class ProfilViewModel(
                 name = nama,
                 age = usia.toIntOrNull() ?: 0,
                 weight = beratKg.toFloatOrNull() ?: 0f,
-                height = tinggiCm.toFloatOrNull() ?: 0f
+                height = tinggiCm.toFloatOrNull() ?: 0f,
+                gender = gender
             )
         }
     }

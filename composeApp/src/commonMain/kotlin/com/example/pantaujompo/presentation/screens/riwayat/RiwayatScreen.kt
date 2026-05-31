@@ -186,41 +186,6 @@ fun RiwayatListView(
                 }
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // ======== FILTER WAKTU (HARIAN, MINGGUAN, BULANAN) ========
-                // Sesuai permintaan: Filter baru di Statistik
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    TimeFilter.entries.forEach { filter ->
-                        val isSel = currentFilter == filter
-                        val filterLabel = when (filter) {
-                            TimeFilter.HARIAN -> AppStrings.get("filter_harian", language)
-                            TimeFilter.MINGGUAN -> AppStrings.get("filter_mingguan", language)
-                            TimeFilter.BULANAN -> AppStrings.get("filter_bulanan", language)
-                            TimeFilter.SEMUA -> AppStrings.get("filter_semua", language)
-                        }
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if(isSel) accentColor else surfaceColor)
-                                .border(1.dp, if(isSel) accentColor else MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
-                                .clickable { onFilterChange(filter) }
-                                .padding(vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                filterLabel,
-                                color = if(isSel) Color.White else textSecondary,
-                                fontSize = 12.sp,
-                                fontWeight = if(isSel) FontWeight.Bold else FontWeight.Normal
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-
                 // ======== TAB SEGMENTED BUTTON ========
                 Row(
                     modifier = Modifier
@@ -377,7 +342,7 @@ fun RiwayatListView(
                             // Batang-batang bar 7 hari
                             Row(
                                 modifier = Modifier.weight(1f).height(140.dp),
-                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                horizontalArrangement = Arrangement.SpaceAround,
                                 verticalAlignment = Alignment.Bottom
                             ) {
                                 weekDays.forEachIndexed { index, (dayName, dateNum, dateKey) ->
@@ -491,14 +456,25 @@ fun RiwayatListView(
                 // --- TAB OLAHRAGA ---
                 if (filteredLariList.isEmpty()) {
                     item {
-                        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp), contentAlignment = Alignment.Center) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("🏃", fontSize = 48.sp)
-                                Spacer(modifier = Modifier.height(12.dp))
+                        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 40.dp), contentAlignment = Alignment.Center) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .glassCard(shape = RoundedCornerShape(24.dp), neonColor = accentColor)
+                                    .padding(32.dp)
+                            ) {
+                                Icon(Icons.Default.DirectionsRun, contentDescription = null, tint = accentColor, modifier = Modifier.size(64.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
                                 Text(
-                                    if (selectedDayKey != null) "Tidak ada olahraga di hari ini"
-                                    else "Belum ada olahraga minggu ini",
-                                    color = textSecondary, fontSize = 15.sp
+                                    "Belum Ada Aktivitas",
+                                    color = textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    if (selectedDayKey != null) "Tidak ada olahraga di hari ini."
+                                    else "Yuk, mulai olahraga pertamamu minggu ini!",
+                                    color = textSecondary, fontSize = 14.sp, textAlign = TextAlign.Center
                                 )
                             }
                         }
@@ -518,14 +494,25 @@ fun RiwayatListView(
                 // --- TAB NUTRISI ---
                 if (filteredMakananList.isEmpty()) {
                     item {
-                        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp), contentAlignment = Alignment.Center) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("🥗", fontSize = 48.sp)
-                                Spacer(modifier = Modifier.height(12.dp))
+                        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 40.dp), contentAlignment = Alignment.Center) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .glassCard(shape = RoundedCornerShape(24.dp), neonColor = Color(0xFF00BCD4))
+                                    .padding(32.dp)
+                            ) {
+                                Icon(Icons.Default.RestaurantMenu, contentDescription = null, tint = Color(0xFF00BCD4), modifier = Modifier.size(64.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
                                 Text(
-                                    if (selectedDayKey != null) "Tidak ada asupan di hari ini"
-                                    else "Belum ada riwayat nutrisi minggu ini",
-                                    color = textSecondary, fontSize = 15.sp
+                                    "Belum Ada Nutrisi",
+                                    color = textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    if (selectedDayKey != null) "Tidak ada asupan di hari ini."
+                                    else "Catat asupan makan pertamamu minggu ini!",
+                                    color = textSecondary, fontSize = 14.sp, textAlign = TextAlign.Center
                                 )
                             }
                         }

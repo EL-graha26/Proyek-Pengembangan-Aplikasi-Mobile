@@ -13,6 +13,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         val USER_AGE = intPreferencesKey("user_age_v2")
         val USER_WEIGHT = floatPreferencesKey("user_weight_v2")
         val USER_HEIGHT = floatPreferencesKey("user_height_v2")
+        val USER_GENDER = stringPreferencesKey("user_gender_v2") // Laki-laki / Perempuan
         val IS_DARK_MODE = booleanPreferencesKey("is_dark_mode_v2")
         val PROFILE_IMAGE_URI = stringPreferencesKey("profile_image_uri_v2")
         val TARGET_KALORI = intPreferencesKey("target_kalori_v2")
@@ -28,6 +29,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     val userAge: Flow<Int> = dataStore.data.map { it[USER_AGE] ?: 0 }
     val userWeight: Flow<Float> = dataStore.data.map { it[USER_WEIGHT] ?: 0f }
     val userHeight: Flow<Float> = dataStore.data.map { it[USER_HEIGHT] ?: 0f }
+    val userGender: Flow<String> = dataStore.data.map { it[USER_GENDER] ?: "Laki-laki" }
     
     // BACA SETTINGS
     val isDarkMode: Flow<Boolean> = dataStore.data.map { it[IS_DARK_MODE] ?: true } // Default Dark
@@ -37,12 +39,13 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     val textSizeScale: Flow<Float> = dataStore.data.map { it[TEXT_SIZE_SCALE] ?: 1.0f }
 
     // FUNGSI SAVE PROFIL
-    suspend fun saveProfile(name: String, age: Int, weight: Float, height: Float) {
+    suspend fun saveProfile(name: String, age: Int, weight: Float, height: Float, gender: String) {
         dataStore.edit { preferences ->
             preferences[USER_NAME] = name
             preferences[USER_AGE] = age
             preferences[USER_WEIGHT] = weight
             preferences[USER_HEIGHT] = height
+            preferences[USER_GENDER] = gender
             preferences[HAS_COMPLETED_PROFILE] = true // Tandai udah ngisi!
         }
     }

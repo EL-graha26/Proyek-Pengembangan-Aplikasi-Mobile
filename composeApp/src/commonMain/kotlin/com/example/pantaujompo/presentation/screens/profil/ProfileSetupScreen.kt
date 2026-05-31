@@ -3,6 +3,7 @@ package com.example.pantaujompo.presentation.screens.profile
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
@@ -32,12 +33,13 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileSetupScreen(
-    onSaveClick: (String, Int, Float, Float) -> Unit
+    onSaveClick: (String, Int, Float, Float, String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var age by remember { mutableStateOf("") }
     var weight by remember { mutableStateOf("") }
     var height by remember { mutableStateOf("") }
+    var gender by remember { mutableStateOf("Laki-laki") } // Laki-laki / Perempuan
 
     var isVisible by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -186,17 +188,34 @@ fun ProfileSetupScreen(
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                         )
                     }
+
+                    // Gender Selection
+                    Text("Jenis Kelamin", color = MaterialTheme.colorScheme.onBackground, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        GenderButton(
+                            text = "Laki-laki",
+                            isSelected = gender == "Laki-laki",
+                            onClick = { gender = "Laki-laki" },
+                            modifier = Modifier.weight(1f)
+                        )
+                        GenderButton(
+                            text = "Perempuan",
+                            isSelected = gender == "Perempuan",
+                            onClick = { gender = "Perempuan" },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
 
-                // Tombol Simpan (Glass Button without emojis)
+                // Tombol Simpan (Glass Button)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
+                        .height(60.dp)
                         .scale(buttonScale)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Brush.linearGradient(listOf(Color(0xFF00E676).copy(alpha=0.8f), Color(0xFF00B3FF).copy(alpha=0.6f))))
-                        .border(1.dp, Color.White.copy(alpha=0.4f), RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Brush.linearGradient(listOf(Color(0xFF00E676).copy(alpha = 0.8f), Color(0xFF00BCD4).copy(alpha = 0.6f)))) // Green & Cyan accent glass
+                        .border(1.dp, Color.White.copy(alpha=0.5f), RoundedCornerShape(20.dp))
                 ) {
                     Button(
                         onClick = {
@@ -207,7 +226,8 @@ fun ProfileSetupScreen(
                                     name,
                                     age.toIntOrNull() ?: 0,
                                     weight.toFloatOrNull() ?: 0f,
-                                    height.toFloatOrNull() ?: 0f
+                                    height.toFloatOrNull() ?: 0f,
+                                    gender
                                 )
                             }
                         },
@@ -221,5 +241,24 @@ fun ProfileSetupScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun GenderButton(text: String, isSelected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val bgColor = if (isSelected) Color(0xFF00E676).copy(alpha = 0.2f) else Color(0xFF151515).copy(alpha = 0.5f)
+    val borderColor = if (isSelected) Color(0xFF00E676) else Color.White.copy(alpha = 0.15f)
+    val textColor = if (isSelected) Color(0xFF00E676) else Color.Gray
+
+    Box(
+        modifier = modifier
+            .height(56.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(bgColor)
+            .border(1.dp, borderColor, RoundedCornerShape(16.dp))
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text, color = textColor, fontWeight = FontWeight.Bold, fontSize = 16.sp)
     }
 }

@@ -41,6 +41,8 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,6 +61,7 @@ fun PemindaiScreen(
     val userPreferences: com.example.pantaujompo.data.local.datastore.UserPreferences = org.koin.compose.koinInject()
     val language by userPreferences.language.collectAsState(initial = "id")
     fun str(key: String) = com.example.pantaujompo.core.util.AppStrings.get(key, language)
+    val context = LocalContext.current
 
     val isDark = MaterialTheme.colorScheme.background == DarkBackground
     val textPrimary = MaterialTheme.colorScheme.onBackground
@@ -92,23 +95,17 @@ fun PemindaiScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                     }
-                    Box(
-                        modifier = Modifier.size(44.dp).clip(CircleShape).background(surfaceColor)
-                            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
-                            .clickable { showTargetDialog = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.MoreVert, null, tint = textSecondary)
-                    }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Calorie Ring
+                // Calorie Ring (Clickable to Set Target)
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
-                        .background(surfaceColor, RoundedCornerShape(24.dp))
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(surfaceColor)
                         .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(24.dp))
+                        .clickable { showTargetDialog = true }
                         .padding(20.dp)
                 ) {
                     Column {
@@ -149,16 +146,7 @@ fun PemindaiScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    NutritionStatCard(str("protein"), "${totalProtein}g", Icons.Default.WaterDrop, Color(0xFF00E676), surfaceColor, Modifier.weight(1f))
-                    NutritionStatCard(str("karbo"), "${totalKarbo}g", Icons.Default.Grain, Color(0xFF00BCD4), surfaceColor, Modifier.weight(1f))
-                    NutritionStatCard(str("makanan").capitalize(), "${makananList.size} ${str("item")}", Icons.Default.Restaurant, Color(0xFFFF9100), surfaceColor, Modifier.weight(1f))
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
+                // Removed Redundant Macro Cards (Protein, Karbo, Makanan)
 
                 Box(
                     modifier = Modifier
@@ -226,7 +214,8 @@ fun PemindaiScreen(
                         textPrimary = textPrimary,
                         textSecondary = textSecondary,
                         surfaceColor = surfaceColor,
-                        onClick = { detailMakanan = makanan }
+                        onClick = { detailMakanan = makanan },
+                        onDelete = { viewModel.deleteMakanan(makanan.id) }
                     )
                 }
             }
@@ -358,10 +347,18 @@ fun NutritionStatCard(label: String, value: String, icon: androidx.compose.ui.gr
 fun DailyMealCard(
     makanan: MakananEntity,
     isDark: Boolean, accentColor: Color, textPrimary: Color, textSecondary: Color, surfaceColor: Color,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onDelete: () -> Unit
 ) {
     val formatter = SimpleDateFormat("HH:mm", Locale("id", "ID"))
     val timeStr = formatter.format(Date(makanan.tanggal))
+    val fallbackIcon = when (makanan.kategori) {
+        "Sarapan" -> "🍳"
+        "Makan Siang" -> "🍱"
+        "Makan Malam" -> "🍲"
+        else -> "🍿"
+    }
+    
     val kalori = makanan.protein * 4 + makanan.karbo * 4 + makanan.lemak * 9
 
     Box(
@@ -369,7 +366,7 @@ fun DailyMealCard(
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 5.dp)
             .background(surfaceColor, RoundedCornerShape(20.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(20.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha=0.3f), RoundedCornerShape(20.dp))
             .clickable { onClick() }
     ) {
         Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -388,14 +385,14 @@ fun DailyMealCard(
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    Text("🍽️", fontSize = 24.sp)
+                    Text(fallbackIcon, fontSize = 24.sp)
                 }
             }
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(makanan.namaMakanan, color = textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 Spacer(modifier = Modifier.height(3.dp))
-                Text("$timeStr · $kalori kcal", color = textSecondary, fontSize = 12.sp)
+                Text("${makanan.kategori} • $timeStr • $kalori kcal", color = textSecondary, fontSize = 12.sp)
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     MiniChip("P:${makanan.protein}g", Color(0xFF00E676))
@@ -403,7 +400,9 @@ fun DailyMealCard(
                     MiniChip("L:${makanan.lemak}g", Color(0xFFFF9100))
                 }
             }
-            Icon(Icons.Default.ChevronRight, null, tint = textSecondary, modifier = Modifier.size(20.dp))
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, null, tint = Color(0xFFFF5252).copy(alpha = 0.8f))
+            }
         }
     }
 }
@@ -459,6 +458,7 @@ fun ScannerBottomSheet(
     var karbo by remember { mutableStateOf(0) }
     var lemak by remember { mutableStateOf(0) }
     var kesimpulan by remember { mutableStateOf("") }
+    var selectedKategori by remember { mutableStateOf("Camilan") }
 
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
         if (bitmap != null) {
@@ -674,9 +674,46 @@ fun ScannerBottomSheet(
                             Text(str("insight_ai"), color = accentColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             Text(kesimpulan, color = textPrimary, fontSize = 13.sp, lineHeight = 18.sp)
                         }
+                        
                         Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Kategori Selection
+                        Text("Kategori", color = textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            val kategoriList = listOf("Sarapan", "Makan Siang", "Makan Malam", "Camilan")
+                            kategoriList.forEach { kat ->
+                                val isSelected = kat == selectedKategori
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(if (isSelected) accentColor else Color.Transparent)
+                                        .border(1.dp, if (isSelected) accentColor else MaterialTheme.colorScheme.outline, RoundedCornerShape(10.dp))
+                                        .clickable { selectedKategori = kat }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        kat.replace("Makan ", ""), 
+                                        color = if (isSelected) Color.Black else textPrimary, 
+                                        fontSize = 11.sp, 
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        val context = LocalContext.current
+                        
                         Button(
                             onClick = {
+                                val finalUri = saveImageToInternalStorage(
+                                    context = context,
+                                    uri = savedUri?.let { Uri.parse(it) },
+                                    bitmap = capturedImage
+                                )
                                 onSimpanClick(
                                     MakananEntity(
                                         namaMakanan = namaMakanan,
@@ -684,7 +721,8 @@ fun ScannerBottomSheet(
                                         karbo = karbo,
                                         lemak = lemak,
                                         info = kesimpulan,
-                                        photoUri = savedUri ?: "" // Only savedUri persists.
+                                        photoUri = finalUri ?: "", // PERMANENT URI
+                                        kategori = selectedKategori
                                     )
                                 )
                                 inputText = ""
@@ -705,6 +743,27 @@ fun ScannerBottomSheet(
             }
             Spacer(modifier = Modifier.height(32.dp))
         }
+    }
+}
+
+fun saveImageToInternalStorage(context: android.content.Context, uri: Uri?, bitmap: Bitmap?): String? {
+    try {
+        val file = java.io.File(context.filesDir, "IMG_${System.currentTimeMillis()}.jpg")
+        file.outputStream().use { out ->
+            if (bitmap != null) {
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+            } else if (uri != null) {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    input.copyTo(out)
+                }
+            } else {
+                return null
+            }
+        }
+        return file.absolutePath
+    } catch (e: Exception) {
+        e.printStackTrace()
+        return null
     }
 }
 

@@ -1,5 +1,7 @@
 package com.example.pantaujompo.presentation.screens.home
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,6 +14,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -39,6 +43,8 @@ import org.koin.compose.koinInject
 import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.rotate
 import com.example.pantaujompo.domain.TrackingManager
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,18 +98,33 @@ fun DashboardScreen(
     val trackingDistance by TrackingManager.totalDistanceMeters.collectAsState()
     val currentJenis = TrackingManager.jenisOlahraga.collectAsState().value
 
+    val appLocale = if (language == "en") Locale("en", "US") else Locale("id", "ID")
+
+    // Request Permissions
+    val permissionsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+        onResult = { permissions: Map<String, Boolean> -> }
+    )
+
     LaunchedEffect(Unit) {
         viewModel.fetchDailyInsight()
+        permissionsLauncher.launch(
+            arrayOf(
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                android.Manifest.permission.CAMERA
+            )
+        )
     }
 
     // Calendar week
-    val calendar = Calendar.getInstance(Locale("id", "ID")).apply {
+    val calendar = Calendar.getInstance(appLocale).apply {
         firstDayOfWeek = Calendar.MONDAY
         set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
     }
-    val sdfDay = SimpleDateFormat("EEE", Locale("id", "ID"))
-    val sdfDate = SimpleDateFormat("dd", Locale("id", "ID"))
-    val sdfKey = SimpleDateFormat("yyyyMMdd", Locale("id", "ID"))
+    val sdfDay = SimpleDateFormat("EEE", appLocale)
+    val sdfDate = SimpleDateFormat("dd", appLocale)
+    val sdfKey = SimpleDateFormat("yyyyMMdd", appLocale)
     val todayKey = sdfKey.format(Date())
     
     val weekDays = List(7) {
@@ -136,13 +157,18 @@ fun DashboardScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Avatar
+                // Avatar with Glass Effect
                 Box(
                     modifier = Modifier
                         .size(54.dp)
                         .clip(CircleShape)
-                        .background(surfaceColor)
-                        .border(2.dp, accentColor, CircleShape)
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(accentColor.copy(alpha = 0.3f), Color.Transparent),
+                                radius = 70f
+                            )
+                        )
+                        .border(1.dp, accentColor.copy(alpha = 0.5f), CircleShape)
                         .clickable { onNavigateToProfil() },
                     contentAlignment = Alignment.Center
                 ) {
@@ -154,7 +180,7 @@ fun DashboardScreen(
                             modifier = Modifier.fillMaxSize().clip(CircleShape)
                         )
                     } else {
-                        Icon(Icons.Default.Person, null, tint = accentColor, modifier = Modifier.size(28.dp))
+                        Icon(Icons.Default.PersonOutline, null, tint = accentColor, modifier = Modifier.size(28.dp))
                     }
                 }
                 Spacer(modifier = Modifier.width(14.dp))
@@ -277,7 +303,29 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // ==================== START WORKOUT CARD (Dipindah ke atas) ====================
+            // ==================== STATS ROW (Total Minggu Ini dipindah ke bawah Kalender) ====================
+            Text(
+                str("total_minggu_ini"), 
+                color = textPrimary, 
+                fontWeight = FontWeight.ExtraBold, 
+                fontSize = 18.sp,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                HomeStatCard(Modifier.weight(1f), Icons.Default.DirectionsRun, str("total_jarak"),
+                    String.format(Locale.US, "%.1f", totalJarak), "km", Color(0xFF00E676), isDark)
+                HomeStatCard(Modifier.weight(1f), Icons.Default.LocalFireDepartment, str("kalori"),
+                    "$totalKalori", "kcal", Color(0xFFFF9100), isDark)
+                HomeStatCard(Modifier.weight(1f), Icons.Default.Timer, str("durasi"),
+                    "$totalDurasi", "min", Color(0xFF00BCD4), isDark)
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // ==================== START WORKOUT CARD ====================
             if (isTrackingStarted) {
                 val formatTime = String.format(Locale.US, "%02d:%02d:%02d", trackingSeconds / 3600, (trackingSeconds % 3600) / 60, trackingSeconds % 60)
                 val distKm = trackingDistance / 1000.0
@@ -285,9 +333,7 @@ fun DashboardScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(accentColor.copy(alpha = 0.15f))
-                        .border(1.dp, accentColor.copy(0.5f), RoundedCornerShape(24.dp))
+                        .glassCard(shape = RoundedCornerShape(24.dp), neonColor = accentColor)
                         .clickable { onNavigateToTracking(currentJenis) }
                         .padding(16.dp)
                 ) {
@@ -301,7 +347,7 @@ fun DashboardScreen(
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Sedang Berjalan", color = accentColor, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
+                            Text(str("sedang_berjalan"), color = accentColor, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
                             Text(
                                 "$currentJenis • $formatTime • ${String.format(Locale.US, "%.2f km", distKm)}",
                                 color = textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold
@@ -316,42 +362,45 @@ fun DashboardScreen(
                     }
                 }
             } else {
+                val interactionSource = remember { MutableInteractionSource() }
+                val isPressed by interactionSource.collectIsPressedAsState()
+                val buttonScale by animateFloatAsState(
+                    targetValue = if (isPressed) 0.95f else 1f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+                )
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp)
+                        .scale(buttonScale)
                         .clip(RoundedCornerShape(24.dp))
-                        .background(
-                            if (isDark)
-                                Brush.horizontalGradient(listOf(Color(0xFF003322), Color(0xFF001A33)))
-                            else
-                                Brush.horizontalGradient(listOf(accentColor.copy(alpha=0.15f), Color(0xFFE8F5E9)))
-                        )
-                        .border(1.dp, accentColor.copy(0.5f), RoundedCornerShape(24.dp))
-                        .clickable { showActivityMenu = true }
+                        .background(Brush.linearGradient(listOf(Color(0xFF00E676).copy(alpha = 0.8f), Color(0xFF00BCD4).copy(alpha = 0.6f)))) // Green & Cyan accent glass
+                        .border(1.dp, Color.White.copy(alpha=0.5f), RoundedCornerShape(24.dp))
+                        .clickable(interactionSource = interactionSource, indication = null) { showActivityMenu = true }
                         .padding(16.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier.size(52.dp).clip(CircleShape)
-                                .background(accentColor.copy(0.2f)),
+                                .background(Color.White.copy(0.2f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.DirectionsRun, null, tint = accentColor, modifier = Modifier.size(30.dp))
+                            Icon(Icons.Default.DirectionsRun, null, tint = Color.White, modifier = Modifier.size(30.dp))
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(str("mulai_aktivitas"), color = textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
+                            Text(str("mulai_aktivitas"), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
                             Text(
-                                "Siap pecahkan rekor hari ini? Gas!",
-                                color = textSecondary, fontSize = 12.sp
+                                str("siap_pecahkan_rekor"),
+                                color = Color.White.copy(0.8f), fontSize = 12.sp
                             )
                         }
                         Box(
-                            modifier = Modifier.size(44.dp).clip(CircleShape).background(accentColor),
+                            modifier = Modifier.size(44.dp).clip(CircleShape).background(Color.White.copy(0.2f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.PlayArrow, null, tint = if(isDark) Color.Black else Color.White, modifier = Modifier.size(26.dp))
+                            Icon(Icons.Default.PlayArrow, null, tint = Color.White, modifier = Modifier.size(26.dp))
                         }
                     }
                 }
@@ -412,12 +461,19 @@ fun DashboardScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
-                    .background(surfaceColor, RoundedCornerShape(22.dp))
-                    .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha=0.5f), RoundedCornerShape(22.dp))
+                    .glassCard(shape = RoundedCornerShape(22.dp), neonColor = Color(0xFF00BCD4))
+                    .clickable { onNavigateToRiwayat() }
                     .padding(20.dp)
             ) {
                 Column {
-                    Text(str("nutrisi_harian"), color = textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(str("nutrisi_harian"), color = textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.ArrowForward, contentDescription = "Detail Nutrisi", tint = textSecondary, modifier = Modifier.size(16.dp))
+                    }
                     Spacer(modifier = Modifier.height(14.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         NutritionBarItem(str("karbo"), "${totalKarbo}g", Color(0xFF00BCD4), isDark)
@@ -427,59 +483,60 @@ fun DashboardScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            // ==================== STATS ROW (Total Minggu Ini dipindah ke bawah) ====================
+            // ==================== SARAN GAYA HIDUP SEHAT (Auto Carousel) ====================
             Text(
-                str("total_minggu_ini"), 
+                "Saran Gaya Hidup Sehat", 
                 color = textPrimary, 
                 fontWeight = FontWeight.ExtraBold, 
                 fontSize = 18.sp,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 12.dp)
             )
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                HomeStatCard(Modifier.weight(1f), Icons.Default.DirectionsRun, str("total_jarak"),
-                    String.format(Locale.US, "%.1f", totalJarak), "km", Color(0xFF00E676), isDark)
-                HomeStatCard(Modifier.weight(1f), Icons.Default.LocalFireDepartment, str("kalori"),
-                    "$totalKalori", "kcal", Color(0xFFFF9100), isDark)
-                HomeStatCard(Modifier.weight(1f), Icons.Default.Timer, str("durasi"),
-                    "$totalDurasi", "min", Color(0xFF00BCD4), isDark)
+            
+            val tips = listOf(
+                Triple(Icons.Default.DirectionsRun, "Aktivitas Fisik Rutin", "Lakukan olahraga ringan minimal 30 menit sehari untuk menjaga kebugaran jantung dan otot tubuh agar tidak kaku."),
+                Triple(Icons.Default.Bedtime, "Tidur Berkualitas", "Istirahat yang cukup 7-8 jam per malam sangat penting untuk regenerasi sel dan menjaga imunitas tetap kuat."),
+                Triple(Icons.Default.RestaurantMenu, "Pola Makan Seimbang", "Perbanyak konsumsi sayur, buah, dan protein. Kurangi makanan tinggi gula atau garam berlebih untuk kesehatan optimal.")
+            )
+            val colors = listOf(Color(0xFF00E676), Color(0xFF651FFF), Color(0xFFFF9100))
+            
+            val pagerState = rememberPagerState(pageCount = { tips.size })
+            
+            // Auto slide logic
+            LaunchedEffect(pagerState) {
+                while(true) {
+                    kotlinx.coroutines.delay(4000)
+                    val nextPage = (pagerState.currentPage + 1) % tips.size
+                    pagerState.animateScrollToPage(nextPage)
+                }
             }
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            // ==================== AI SUGGESTION CARD ====================
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(
-                        if (isDark) Color(0xFF1E102A) else Color(0xFFF3E5F5)
-                    )
-                    .border(1.dp, Color(0xFF9C27B0).copy(0.4f), RoundedCornerShape(22.dp))
-                    .clickable { onNavigateToAiChat() }
-                    .padding(20.dp)
+            
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxWidth().height(120.dp),
+                contentPadding = PaddingValues(horizontal = 24.dp),
+                pageSpacing = 16.dp
+            ) { page ->
+                LifestyleCard(
+                    icon = tips[page].first,
+                    title = tips[page].second,
+                    desc = tips[page].third,
+                    color = colors[page],
+                    isDark = isDark
+                )
+            }
+            
+            // Pager Indicator
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                horizontalArrangement = Arrangement.Center
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                repeat(tips.size) { index ->
+                    val color = if (pagerState.currentPage == index) accentColor else MaterialTheme.colorScheme.outline.copy(alpha=0.3f)
                     Box(
-                        modifier = Modifier.size(50.dp).clip(CircleShape).background(Color(0xFF9C27B0)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.AutoAwesome, null, tint = Color.White, modifier = Modifier.size(24.dp))
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(str("saran_ai"), color = textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
-                        Text(
-                            "\"$aiSuggestion\"",
-                            color = textSecondary, fontSize = 12.sp, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, lineHeight = 16.sp
-                        )
-                    }
-                    Icon(Icons.Default.ChevronRight, null, tint = Color(0xFF9C27B0))
+                        modifier = Modifier.padding(2.dp).size(8.dp).clip(CircleShape).background(color)
+                    )
                 }
             }
 
@@ -499,17 +556,32 @@ fun DashboardScreen(
                 Text(str("pantau_aktivitas"), color = textSecondary, fontSize = 13.sp)
                 Spacer(modifier = Modifier.height(24.dp))
 
-                ActivityMenuItem(str("jalan_santai"), Icons.Default.DirectionsWalk, Color(0xFF00BCD4), "Langkah ringan, napas lega") {
+                ActivityMenuItem(
+                    str("jalan_santai"), 
+                    Icons.Default.DirectionsWalk, 
+                    Color(0xFF00BCD4), 
+                    if (language == "en") "Light steps, easy breath" else "Langkah ringan, napas lega"
+                ) {
                     showActivityMenu = false
                     onNavigateToTracking("Jalan")
                 }
                 Spacer(modifier = Modifier.height(12.dp))
-                ActivityMenuItem(str("lari_jogging"), Icons.Default.DirectionsRun, Color(0xFF00E676), "Bakar kalori, pacu adrenalin") {
+                ActivityMenuItem(
+                    str("lari_jogging"), 
+                    Icons.Default.DirectionsRun, 
+                    Color(0xFF00E676), 
+                    if (language == "en") "Burn calories, push limits" else "Bakar kalori, pacu adrenalin"
+                ) {
                     showActivityMenu = false
                     onNavigateToTracking("Lari")
                 }
                 Spacer(modifier = Modifier.height(12.dp))
-                ActivityMenuItem(str("bersepeda"), Icons.Default.DirectionsBike, Color(0xFFFF9100), "Gowes sehat, jelajahi rute") {
+                ActivityMenuItem(
+                    str("bersepeda"), 
+                    Icons.Default.DirectionsBike, 
+                    Color(0xFFFF9100), 
+                    if (language == "en") "Healthy ride, explore routes" else "Gowes sehat, jelajahi rute"
+                ) {
                     showActivityMenu = false
                     onNavigateToTracking("Sepeda")
                 }
@@ -627,5 +699,39 @@ fun NutritionBarItem(label: String, value: String, color: Color, isDark: Boolean
         Text(value, color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(6.dp))
         Box(modifier = Modifier.width(36.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(color))
+    }
+}
+
+@Composable
+fun LifestyleCard(icon: ImageVector, title: String, desc: String, color: Color, isDark: Boolean) {
+    val surfaceColor = if (isDark) Color(0xFF131313) else MaterialTheme.colorScheme.surface
+    val textColor = if (isDark) Color.White else Color.Black
+    val textSecondaryColor = if (isDark) Color(0xFFA0A0A0) else Color(0xFF4A4A4A)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(surfaceColor)
+            .border(1.dp, color.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+            .padding(16.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(color.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, null, tint = color, modifier = Modifier.size(24.dp))
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(title, color = textColor, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(desc, color = textSecondaryColor, fontSize = 12.sp, lineHeight = 16.sp)
+            }
+        }
     }
 }

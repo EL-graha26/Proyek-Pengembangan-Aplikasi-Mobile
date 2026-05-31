@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.*
+import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -124,14 +125,44 @@ fun ProfilScreen(
         if (granted) cameraLauncher.launch(null)
     }
 
-    MeshBackground(modifier = Modifier.fillMaxSize()) {
-        Column(
+    val infiniteTransition = rememberInfiniteTransition()
+    val glowOffset by infiniteTransition.animateFloat(
+        initialValue = -50f, targetValue = 50f,
+        animationSpec = infiniteRepeatable(tween(3000, easing = LinearEasing), RepeatMode.Reverse)
+    )
+
+    Box(modifier = Modifier.fillMaxSize().background(if (isDark) Color(0xFF080808) else Color(0xFFF0F2F5))) {
+        // Glowing Background Orbs
+        Box(
             modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp)
-        ) {
-            Spacer(modifier = Modifier.height(48.dp))
+                .offset(x = glowOffset.dp, y = (-100).dp)
+                .size(300.dp)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(Color(0xFF00E676).copy(alpha = 0.15f), Color.Transparent)
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .offset(x = (-glowOffset).dp, y = 100.dp)
+                .size(350.dp)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(Color(0xFF00BCD4).copy(alpha = 0.15f), Color.Transparent)
+                    )
+                )
+        )
+        
+        MeshBackground(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp)
+            ) {
+                Spacer(modifier = Modifier.height(48.dp))
 
             // Header
             Row(
@@ -159,8 +190,7 @@ fun ProfilScreen(
             // ===== PROFILE CARD =====
             Box(
                 modifier = Modifier.fillMaxWidth()
-                    .background(surfaceColor, RoundedCornerShape(28.dp))
-                    .border(1.dp, accentColor.copy(0.25f), RoundedCornerShape(28.dp))
+                    .glassCard(shape = RoundedCornerShape(28.dp))
                     .padding(24.dp)
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
@@ -186,7 +216,10 @@ fun ProfilScreen(
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.fillMaxSize().clip(CircleShape)
                                 )
-                                else -> Icon(Icons.Default.Person, null, tint = accentColor, modifier = Modifier.size(48.dp))
+                                else -> {
+                                    val defaultIcon = if (profilViewModel.gender == "Perempuan") Icons.Default.Face4 else Icons.Default.Face
+                                    Icon(defaultIcon, null, tint = accentColor, modifier = Modifier.size(48.dp))
+                                }
                             }
                         }
                         // Edit badge
@@ -239,16 +272,7 @@ fun ProfilScreen(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
                     )
 
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // Stats
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        ProfilStatItem("${String.format(Locale.US, "%.1f", totalKm)} km", str("total_jarak"), Color(0xFF00BCD4))
-                        Box(modifier = Modifier.width(1.dp).height(40.dp).background(MaterialTheme.colorScheme.outline))
-                        ProfilStatItem("$totalKalori", str("kalori"), Color(0xFFFF9100))
-                        Box(modifier = Modifier.width(1.dp).height(40.dp).background(MaterialTheme.colorScheme.outline))
-                        ProfilStatItem("${totalWaktu}m", str("total_waktu"), accentColor)
-                    }
+                    // Stats removed per user request
                 }
             }
 
@@ -257,8 +281,7 @@ fun ProfilScreen(
             // ===== BIOMETRICS CARD =====
             Box(
                 modifier = Modifier.fillMaxWidth()
-                    .background(surfaceColor, RoundedCornerShape(28.dp))
-                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(28.dp))
+                    .glassCard(shape = RoundedCornerShape(28.dp))
                     .padding(24.dp)
             ) {
                 Column {
@@ -328,6 +351,7 @@ fun ProfilScreen(
 
             Spacer(modifier = Modifier.height(100.dp))
         }
+    }
     }
 
     // PP Dialog

@@ -5,10 +5,13 @@ import android.content.Context
 import android.graphics.Color as AndroidColor
 import android.graphics.Paint
 import android.location.Location
+import android.location.LocationManager
 import android.os.Looper
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -42,6 +45,8 @@ import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.MapTileIndex
+import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 
 import com.example.pantaujompo.core.util.AppStrings
@@ -108,9 +113,28 @@ fun TrackingScreen(
     val totalDistanceInMeters by TrackingManager.totalDistanceMeters.collectAsState()
     val routePoints by TrackingManager.routePoints.collectAsState()
     
-    var hasLocationPermission by remember { mutableStateOf(false) }
+    var hasLocationPermission by remember { 
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context, 
+                android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) 
+    }
+    var isGpsEnabled by remember { mutableStateOf(false) }
     var lastKnownGeoPoint by remember { mutableStateOf<GeoPoint?>(null) }
+    var isMapInitialized by remember { mutableStateOf(false) }
     
+    // Check GPS Status periodically
+    LaunchedEffect(Unit) {
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        while (true) {
+            isGpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || 
+                           locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+            kotlinx.coroutines.delay(2000)
+        }
+    }
+
     BackHandler(enabled = hasStarted) {
         onNavigateBack() // Minimize ke home, jangan stop
     }
@@ -124,6 +148,8 @@ fun TrackingScreen(
         hasLocationPermission = permissions[android.Manifest.permission.ACCESS_FINE_LOCATION] == true
     }
 
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+
     // Update local last geo point from tracking manager for button centering
     LaunchedEffect(routePoints) {
         if (routePoints.isNotEmpty()) {
@@ -131,16 +157,81 @@ fun TrackingScreen(
         }
     }
 
+    // Timer Coroutine
+    LaunchedEffect(isRunning) {
+        if (isRunning) {
+            while(true) {
+                kotlinx.coroutines.delay(1000)
+                TrackingManager.incrementTime()
+            }
+        }
+    }
+
+    // Location Updates Coroutine
+    LaunchedEffect(hasLocationPermission, isGpsEnabled) {
+        if (hasLocationPermission && isGpsEnabled) {
+            try {
+                fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
+                    if (loc != null) {
+                        lastKnownGeoPoint = GeoPoint(loc.latitude, loc.longitude)
+                    }
+                }
+            } catch (e: SecurityException) { }
+
+            val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 2000)
+                .setMinUpdateDistanceMeters(1f)
+                .build()
+
+            val locationCallback = object : LocationCallback() {
+                override fun onLocationResult(result: LocationResult) {
+                    for (location in result.locations) {
+                        val geoPoint = GeoPoint(location.latitude, location.longitude)
+                        lastKnownGeoPoint = geoPoint
+                        
+                        if (isRunning) { 
+                            val currentRoute = TrackingManager.routePoints.value
+                            val distanceDelta = if (currentRoute.isNotEmpty()) {
+                                val lastLocation = Location("").apply {
+                                    latitude = currentRoute.last().latitude
+                                    longitude = currentRoute.last().longitude
+                                }
+                                location.distanceTo(lastLocation).toDouble()
+                            } else 0.0
+
+                            TrackingManager.addLocationPoint(geoPoint, distanceDelta)
+                        }
+                    }
+                }
+            }
+
+            try {
+                fusedLocationClient.requestLocationUpdates(
+                    locationRequest,
+                    locationCallback,
+                    Looper.getMainLooper()
+                )
+            } catch (e: SecurityException) {
+                // Ignore
+            }
+
+            suspendCancellableCoroutine<Unit> { cont ->
+                cont.invokeOnCancellation {
+                    fusedLocationClient.removeLocationUpdates(locationCallback)
+                }
+            }
+        }
+    }
+
     // Kalkulasi statistik real-time
     val distanceInKm = totalDistanceInMeters / 1000.0
     val durationHours = seconds / 3600.0
-    val calculatedKcal = if (durationHours > 0) {
-        val met = when (jenis.lowercase()) {
-            "jalan" -> 3.5
-            "sepeda" -> 8.0
-            else -> 9.8 // Default: Lari
+    val calculatedKcal = if (distanceInKm > 0.005) {
+        val multiplier = when (jenis.lowercase()) {
+            "jalan" -> 0.73
+            "sepeda" -> 0.50
+            else -> 1.036
         }
-        (met * userWeight * durationHours).toInt()
+        (multiplier * userWeight * distanceInKm).toInt()
     } else 0
     val formatTime = String.format(Locale.US, "%02d:%02d:%02d", seconds / 3600, (seconds % 3600) / 60, seconds % 60)
     val paceDouble = if (distanceInKm > 0) (seconds / 60.0) / distanceInKm else 0.0
@@ -177,13 +268,37 @@ fun TrackingScreen(
                     // Setel ke Google Maps (Standard atau Satelit)
                     map.setTileSource(if (useSatellite) satelliteTileSource else standardTileSource)
 
+                    if (!isMapInitialized) {
+                        map.controller.setZoom(18.0)
+                        if (lastKnownGeoPoint != null) {
+                            map.controller.setCenter(lastKnownGeoPoint)
+                            isMapInitialized = true // HANYA inisialisasi kalau sudah dapat titik
+                        } else {
+                            map.controller.setCenter(GeoPoint(-6.2088, 106.8456)) // Default to Jakarta sementara
+                        }
+                    }
+
                     // Hapus overlay lama kecuali tile
                     map.overlays.removeAll { it !is org.osmdroid.views.overlay.TilesOverlay }
 
-                    if (routePoints.isNotEmpty()) {
-                        val currentPos = routePoints.last()
+                    // Marker posisi user (tampilkan selalu jika koordinat GPS diketahui, baik sebelum maupun saat jalan)
+                    if (lastKnownGeoPoint != null) {
+                        if (userMarker == null) {
+                            userMarker = Marker(map)
+                            userMarker?.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                            userMarker?.icon = com.example.pantaujompo.core.util.MapUtils.createCustomMarkerDrawable(context)
+                        }
+                        userMarker?.position = lastKnownGeoPoint
+                        map.overlays.add(userMarker!!)
 
-                        // Gambar garis rute dengan warna neon dinamis
+                        // Auto-center ke posisi user (baik saat standby maupun saat tracking, asalkan isMapCenteredOnUser true)
+                        if (isMapCenteredOnUser) {
+                            map.controller.animateTo(lastKnownGeoPoint)
+                        }
+                    }
+
+                    // Gambar garis rute HANYA jika sedang/sudah ada tracking
+                    if (routePoints.isNotEmpty()) {
                         val line = Polyline(map)
                         line.setPoints(routePoints.toList())
                         line.outlinePaint.color = when (jenis.lowercase()) {
@@ -196,20 +311,6 @@ fun TrackingScreen(
                         line.outlinePaint.strokeJoin = Paint.Join.ROUND
                         line.outlinePaint.strokeCap = Paint.Cap.ROUND
                         map.overlays.add(line)
-
-                        // Marker posisi user
-                        if (userMarker == null) {
-                            userMarker = Marker(map)
-                            userMarker?.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                            userMarker?.icon = com.example.pantaujompo.core.util.MapUtils.createCustomMarkerDrawable(context)
-                        }
-                        userMarker?.position = currentPos
-                        map.overlays.add(userMarker!!)
-
-                        // Auto-center ke posisi user saat tracking
-                        if (isMapCenteredOnUser) {
-                            map.controller.animateTo(currentPos)
-                        }
                     }
                     map.invalidate()
                 }
@@ -224,40 +325,40 @@ fun TrackingScreen(
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .background(Color(0xFF0C0C0C).copy(alpha = 0.95f), CircleShape)
-                        .border(1.5.dp, if (useSatellite) Color.Green.copy(alpha=0.6f) else Color.White.copy(alpha=0.25f), CircleShape)
+                        .background(surfaceColor.copy(alpha = 0.95f), CircleShape)
+                        .border(1.5.dp, if (useSatellite) Color.Green.copy(alpha=0.6f) else textPrimary.copy(alpha=0.25f), CircleShape)
                         .clickable { useSatellite = !useSatellite },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Layers, null, tint = if (useSatellite) Color.Green else Color.White, modifier = Modifier.size(22.dp))
+                    Icon(Icons.Default.Layers, null, tint = if (useSatellite) Color.Green else textPrimary, modifier = Modifier.size(22.dp))
                 }
 
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .background(Color(0xFF0C0C0C).copy(alpha = 0.95f), CircleShape)
-                        .border(1.5.dp, Color.White.copy(alpha=0.25f), CircleShape)
+                        .background(surfaceColor.copy(alpha = 0.95f), CircleShape)
+                        .border(1.5.dp, textPrimary.copy(alpha=0.25f), CircleShape)
                         .clickable { mapView.controller.zoomIn() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Add, null, tint = Color.White, modifier = Modifier.size(24.dp))
+                    Icon(Icons.Default.Add, null, tint = textPrimary, modifier = Modifier.size(24.dp))
                 }
 
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .background(Color(0xFF0C0C0C).copy(alpha = 0.95f), CircleShape)
-                        .border(1.5.dp, Color.White.copy(alpha=0.25f), CircleShape)
+                        .background(surfaceColor.copy(alpha = 0.95f), CircleShape)
+                        .border(1.5.dp, textPrimary.copy(alpha=0.25f), CircleShape)
                         .clickable { mapView.controller.zoomOut() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Remove, null, tint = Color.White, modifier = Modifier.size(24.dp))
+                    Icon(Icons.Default.Remove, null, tint = textPrimary, modifier = Modifier.size(24.dp))
                 }
 
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .background(Color(0xFF0C0C0C).copy(alpha = 0.95f), CircleShape)
+                        .background(surfaceColor.copy(alpha = 0.95f), CircleShape)
                         .border(1.5.dp, jenisColor.copy(alpha=0.6f), CircleShape)
                         .clickable {
                             lastKnownGeoPoint?.let {
@@ -272,7 +373,7 @@ fun TrackingScreen(
             }
         }
 
-        // ======== HEADER: TOMBOL BACK + STATUS GPS ========
+        // ======== HEADER: TOMBOL BACK ========
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -294,7 +395,28 @@ fun TrackingScreen(
                 Icon(Icons.Default.ArrowBack, contentDescription = str("kembali"), tint = textPrimary)
             }
 
-            // Strava-style simple GPS icon
+            // Modern Glassmorphism GPS Status Indicator
+            val gpsText: String
+            val gpsColor: Color
+            when {
+                !hasLocationPermission -> {
+                    gpsText = "Izinkan Lokasi"
+                    gpsColor = Color(0xFFFF9100) // Orange
+                }
+                !isGpsEnabled -> {
+                    gpsText = "Hidupkan GPS"
+                    gpsColor = Color.Red
+                }
+                lastKnownGeoPoint == null -> {
+                    gpsText = "Mencari GPS..."
+                    gpsColor = Color(0xFFFF9100)
+                }
+                else -> {
+                    gpsText = "GPS ON"
+                    gpsColor = Color(0xFF00E676)
+                }
+            }
+
             Box(
                 modifier = Modifier
                     .background(surfaceColor.copy(alpha = 0.9f), CircleShape)
@@ -303,11 +425,12 @@ fun TrackingScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.MyLocation, null, tint = if (hasLocationPermission) Color(0xFF00E676) else Color.Red, modifier = Modifier.size(16.dp))
-                    if (!hasLocationPermission) {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("GPS OFF", color = Color.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
+                    Icon(Icons.Default.MyLocation, null, tint = gpsColor, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        if (!isGpsEnabled) "Hidupkan GPS" else if (!hasLocationPermission) "Izinkan Lokasi" else if (lastKnownGeoPoint == null) "Mencari GPS..." else "GPS Siap",
+                        color = textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp
+                    )
                 }
             }
         }
@@ -318,7 +441,7 @@ fun TrackingScreen(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-                .background(Color(0xFF0C0C0C).copy(alpha = 0.95f)) // Solid dark like screenshot
+                .background(surfaceColor.copy(alpha = 0.98f)) // Dynamic surface color for light/dark
                 .padding(top = 12.dp, start = 24.dp, end = 24.dp, bottom = 32.dp)
                 .navigationBarsPadding()
         ) {
@@ -377,7 +500,7 @@ fun TrackingScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = jenisColor),
                         shape = RoundedCornerShape(32.dp)
                     ) {
-                        Text("MULAI AKTIVITAS", color = Color.Black, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, letterSpacing = 1.sp)
+                        Text("MULAI", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, letterSpacing = 2.sp)
                     }
                 } else if (isRunning) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -387,11 +510,11 @@ fun TrackingScreen(
                             modifier = Modifier.weight(1f).height(64.dp),
                             shape = RoundedCornerShape(24.dp),
                             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFB300).copy(alpha = 0.5f)),
-                            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFF1E1E1E), contentColor = Color(0xFFFFB300)),
+                            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFFFFB300).copy(alpha = 0.2f), contentColor = Color(0xFFFF9100)),
                         ) {
-                            Icon(Icons.Default.Pause, null, modifier = Modifier.size(24.dp))
+                            Icon(Icons.Default.Pause, contentDescription = "Pause", tint = Color(0xFFFF9100), modifier = Modifier.size(32.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("JEDA", fontWeight = FontWeight.Bold, fontSize = 16.sp, letterSpacing = 1.sp)
+                            Text("PAUSE", color = Color(0xFFFF9100), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
                         }
                         
                         // Finish Button
@@ -404,26 +527,26 @@ fun TrackingScreen(
                             modifier = Modifier.weight(1f).height(64.dp),
                             shape = RoundedCornerShape(24.dp),
                             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE53935).copy(alpha = 0.5f)),
-                            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFF1E1E1E), contentColor = Color(0xFFE53935)),
+                            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFFE53935).copy(alpha = 0.2f), contentColor = Color(0xFFE53935)),
                         ) {
-                            Icon(Icons.Default.Flag, null, modifier = Modifier.size(24.dp))
+                            Icon(Icons.Default.Flag, contentDescription = "Selesai", tint = Color(0xFFE53935), modifier = Modifier.size(24.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("SELESAI", fontWeight = FontWeight.Bold, fontSize = 16.sp, letterSpacing = 1.sp)
+                            Text("SELESAI", color = Color(0xFFE53935), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
                         }
                     }
                 } else {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        // Resume Button (Rounded Rectangle)
+                        // Resume Button
                         OutlinedButton(
                             onClick = { TrackingManager.resumeTracking() },
                             modifier = Modifier.weight(1f).height(64.dp),
                             shape = RoundedCornerShape(24.dp),
                             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF00E676).copy(alpha = 0.5f)),
-                            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFF1E1E1E), contentColor = Color(0xFF00E676)),
+                            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFF00E676).copy(alpha = 0.2f), contentColor = Color(0xFF00E676)),
                         ) {
-                            Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(24.dp))
+                            Icon(Icons.Default.PlayArrow, contentDescription = "Lanjut", tint = Color(0xFF00E676), modifier = Modifier.size(32.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("LANJUT", fontWeight = FontWeight.Bold, fontSize = 16.sp, letterSpacing = 1.sp)
+                            Text("LANJUT", color = Color(0xFF00E676), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
                         }
                         
                         // Finish Button
@@ -436,11 +559,11 @@ fun TrackingScreen(
                             modifier = Modifier.weight(1f).height(64.dp),
                             shape = RoundedCornerShape(24.dp),
                             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE53935).copy(alpha = 0.5f)),
-                            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFF1E1E1E), contentColor = Color(0xFFE53935)),
+                            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFFE53935).copy(alpha = 0.2f), contentColor = Color(0xFFE53935)),
                         ) {
-                            Icon(Icons.Default.Flag, null, modifier = Modifier.size(24.dp))
+                            Icon(Icons.Default.Flag, contentDescription = "Selesai", tint = Color(0xFFE53935), modifier = Modifier.size(24.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("SELESAI", fontWeight = FontWeight.Bold, fontSize = 16.sp, letterSpacing = 1.sp)
+                            Text("SELESAI", color = Color(0xFFE53935), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
                         }
                     }
                 }

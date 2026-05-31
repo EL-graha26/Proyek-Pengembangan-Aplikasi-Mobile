@@ -74,16 +74,19 @@ class DashboardViewModel(
         }
     }
 
-    fun simpanAktivitas(jenis: String, jarak: Double, kalori: Int, durasi: Int, pace: String, ruteString: String) {
+    fun simpanAktivitas(judul: String, deskripsi: String, jenis: String, jarak: Double, kalori: Int, durasi: Int, pace: String, ruteString: String, photoUri: String?) {
         viewModelScope.launch {
             dao.insertRiwayat(
                 RiwayatEntity(
+                    judul = judul,
+                    deskripsi = deskripsi,
                     jenis = jenis,
                     jarak = jarak,
                     kalori = kalori,
                     durasi = durasi,
                     pace = pace,
-                    ruteString = ruteString
+                    ruteString = ruteString,
+                    photoUri = photoUri
                 )
             )
         }

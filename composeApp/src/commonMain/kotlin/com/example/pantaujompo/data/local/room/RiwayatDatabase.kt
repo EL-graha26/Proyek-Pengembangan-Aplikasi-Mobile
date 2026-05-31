@@ -6,13 +6,16 @@ import kotlinx.coroutines.flow.Flow
 @Entity(tableName = "riwayat_lari")
 data class RiwayatEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val judul: String = "",
+    val deskripsi: String = "",
     val jenis: String = "Lari", // Baru: Jalan, Lari, atau Sepeda
     val jarak: Double,
     val kalori: Int,
     val durasi: Int,
     val pace: String,
     val tanggal: Long = System.currentTimeMillis(),
-    val ruteString: String
+    val ruteString: String,
+    val photoUri: String? = null
 )
 
 @Dao
@@ -36,6 +39,7 @@ data class MakananEntity(
     val lemak: Int,
     val info: String,
     val photoUri: String = "", // Baru: Untuk menampilkan foto makanan
+    val kategori: String = "Lainnya", // Kategori makanan: Sarapan, Makan Siang, Makan Malam, Camilan
     val tanggal: Long = System.currentTimeMillis()
 )
 
@@ -51,8 +55,8 @@ interface MakananDao {
     suspend fun hapusMakananById(id: Int)
 }
 
-// BUMP VERSION KE 4
-@Database(entities = [RiwayatEntity::class, MakananEntity::class], version = 4, exportSchema = false)
+// BUMP VERSION KE 6
+@Database(entities = [RiwayatEntity::class, MakananEntity::class], version = 6, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun riwayatDao(): RiwayatDao
     abstract fun makananDao(): MakananDao

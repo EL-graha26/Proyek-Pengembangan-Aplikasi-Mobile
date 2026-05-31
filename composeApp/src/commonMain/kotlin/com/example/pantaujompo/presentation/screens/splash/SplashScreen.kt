@@ -30,6 +30,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.example.pantaujompo.utils.SoundManager
 import androidx.compose.ui.graphics.graphicsLayer
+import org.koin.compose.koinInject
+import com.example.pantaujompo.data.local.datastore.UserPreferences
+import com.example.pantaujompo.core.util.AppStrings
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -166,27 +171,31 @@ fun SplashScreen(
 fun OnboardingPager(onFinish: () -> Unit) {
     val pagerState = rememberPagerState(pageCount = { 3 })
     val coroutineScope = rememberCoroutineScope()
+    val userPreferences: UserPreferences = koinInject()
 
+    val language by userPreferences.language.collectAsState(initial = "id")
+    fun str(key: String): String = AppStrings.get(key, language)
+    
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFF080808))) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
             when (page) {
                 0 -> OnboardingPage(
                     icons = listOf(Icons.Default.DirectionsRun, Icons.Default.DirectionsBike, Icons.Default.Timer),
-                    title = "Mulai Bergerak dan Energik",
-                    desc = "Waktunya bangun dan penuhi targetmu! Pantau rute, langkah, dan energimu setiap hari tanpa ribet.",
+                    title = str("onboarding_1_title"),
+                    desc = str("onboarding_1_desc"),
                     color = Color(0xFF00E676)
                 )
                 1 -> OnboardingPage(
                     icons = listOf(Icons.Default.Restaurant, Icons.Default.CameraAlt, Icons.Default.MonitorWeight),
-                    title = "Sehat Itu Mudah & Nyaman",
-                    desc = "Makan enak tetap terkontrol. Pindai makananmu dengan AI yang super friendly dan otomatis menghitung gizimu.",
-                    color = Color(0xFF00B3FF)
+                    title = str("onboarding_2_title"),
+                    desc = str("onboarding_2_desc"),
+                    color = Color(0xFF00BCD4) // NeonCyan
                 )
                 2 -> OnboardingPage(
                     icons = listOf(Icons.Default.AutoAwesome, Icons.Default.Favorite, Icons.Default.TrendingUp),
-                    title = "Masa Depan Fitnesmu",
-                    desc = "Mari buat profil untuk AI kami. Dapatkan rekomendasi yang dibuat eksklusif hanya untuk dirimu.",
-                    color = Color(0xFFFF4081)
+                    title = str("onboarding_3_title"),
+                    desc = str("onboarding_3_desc"),
+                    color = Color(0xFFFF4081) // NeonPurple
                 )
             }
         }
@@ -212,14 +221,22 @@ fun OnboardingPager(onFinish: () -> Unit) {
                 }
             }
 
-            // Glass Button
+            // Glass Button with Interaction
+            val interactionSource = remember { MutableInteractionSource() }
+            val isPressed by interactionSource.collectIsPressedAsState()
+            val buttonScale by animateFloatAsState(
+                targetValue = if (isPressed) 0.95f else 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+            )
+            
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Brush.linearGradient(listOf(Color(0xFF00E676).copy(alpha = 0.8f), Color(0xFF00B3FF).copy(alpha = 0.6f))))
-                    .border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                    .height(60.dp)
+                    .scale(buttonScale)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Brush.linearGradient(listOf(Color(0xFF00E676).copy(alpha = 0.8f), Color(0xFF00BCD4).copy(alpha = 0.6f))))
+                    .border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
             ) {
                 Button(
                     onClick = {
@@ -229,12 +246,13 @@ fun OnboardingPager(onFinish: () -> Unit) {
                             onFinish()
                         }
                     },
+                    interactionSource = interactionSource,
                     modifier = Modifier.fillMaxSize(),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                     contentPadding = PaddingValues(0.dp)
                 ) {
                     Text(
-                        text = if (pagerState.currentPage == 2) "Mulai / Setup Profil" else "Selanjutnya",
+                        text = if (pagerState.currentPage == 2) str("mulai_setup_profil") else str("selanjutnya"),
                         color = Color.White,
                         fontWeight = FontWeight.ExtraBold,
                         fontSize = 18.sp

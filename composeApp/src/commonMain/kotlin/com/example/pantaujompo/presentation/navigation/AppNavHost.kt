@@ -3,7 +3,10 @@ package com.example.pantaujompo.presentation.navigation
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -176,9 +179,27 @@ fun AppNavHost(
             navController = navController,
             startDestination = Route.Splash,
             modifier = modifier, // Biarkan konten memanjang hingga ke bawah layar (di bawah navbar)
-            enterTransition = { fadeIn(animationSpec = tween(300)) },
-            exitTransition = { fadeOut(animationSpec = tween(300)) }
+            enterTransition = { 
+                scaleIn(initialScale = 0.95f, animationSpec = tween(400, easing = FastOutSlowInEasing)) + 
+                fadeIn(animationSpec = tween(400)) 
+            },
+            exitTransition = { 
+                scaleOut(targetScale = 1.05f, animationSpec = tween(400, easing = FastOutSlowInEasing)) + 
+                fadeOut(animationSpec = tween(400)) 
+            },
+            popEnterTransition = { 
+                scaleIn(initialScale = 1.05f, animationSpec = tween(400, easing = FastOutSlowInEasing)) + 
+                fadeIn(animationSpec = tween(400)) 
+            },
+            popExitTransition = { 
+                scaleOut(targetScale = 0.95f, animationSpec = tween(400, easing = FastOutSlowInEasing)) + 
+                fadeOut(animationSpec = tween(400)) 
+            }
         ) {
+            // ==========================================
+            // SUB-NAVIGASI: SPLASH & ONBOARDING
+            // Layar awal saat aplikasi baru dibuka
+            // ==========================================
             composable<Route.Splash> {
                 SplashScreen(
                     hasCompletedProfile = hasCompletedProfile,
@@ -193,16 +214,22 @@ fun AppNavHost(
 
             composable<Route.ProfileSetup> {
                 ProfileSetupScreen(
-                    onSaveClick = { name, age, weight, height ->
+                    onSaveClick = { name, age, weight, height, gender ->
                         profilViewModel.nama = name
                         profilViewModel.usia = age.toString()
                         profilViewModel.beratKg = weight.toString()
                         profilViewModel.tinggiCm = height.toString()
+                        profilViewModel.gender = gender
                         profilViewModel.saveProfile()
                         navController.navigate(Route.Beranda) { popUpTo(Route.ProfileSetup) { inclusive = true } }
                     }
                 )
             }
+
+            // ==========================================
+            // NAVIGASI 5 SCREEN UTAMA (BOTTOM NAVBAR)
+            // ==========================================
+
 
             composable<Route.Beranda> { 
                 DashboardScreen(
@@ -249,6 +276,11 @@ fun AppNavHost(
                     onNavigateToDetail = { id -> navController.navigate(Route.DetailRiwayat(id.toLong())) }
                 )
             }
+
+            // ==========================================
+            // SUB-NAVIGASI: FITUR TAMBAHAN & DETAIL
+            // ==========================================
+
 
             composable<Route.DetailRiwayat> { backStackEntry ->
                 val route: Route.DetailRiwayat = backStackEntry.toRoute()
@@ -324,9 +356,9 @@ fun AppNavHost(
                     durasi = route.durasi,
                     pace = route.pace,
                     onNavigateBack = { navController.popBackStack() },
-                    onSaveClick = { judul, deskripsi, jns, jrk, klr, drs, pc, ruteString ->
+                    onSaveClick = { judul, deskripsi, jns, jrk, klr, drs, pc, ruteString, photoUri ->
                         // Saat ini simulasi save dengan memanggil VM lalu balik ke beranda
-                        sharedDashboardViewModel.simpanAktivitas(jns, jrk, klr, drs, pc, ruteString)
+                        sharedDashboardViewModel.simpanAktivitas(judul, deskripsi, jns, jrk, klr, drs, pc, ruteString, photoUri)
                         navController.navigate(Route.Beranda) {
                             popUpTo(Route.Beranda) { inclusive = true }
                         }

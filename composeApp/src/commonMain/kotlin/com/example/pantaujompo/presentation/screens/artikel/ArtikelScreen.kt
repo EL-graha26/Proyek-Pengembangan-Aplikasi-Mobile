@@ -41,6 +41,10 @@ fun ArtikelScreen(
     val daftarArtikel by viewModel.artikelList.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
+    val userPreferences: com.example.pantaujompo.data.local.datastore.UserPreferences = org.koin.compose.koinInject()
+    val language by userPreferences.language.collectAsState(initial = "id")
+    fun str(key: String) = com.example.pantaujompo.core.util.AppStrings.get(key, language)
+
     // State untuk menyimpan artikel yang lagi dibaca bray
     var artikelDipilih by remember { mutableStateOf<NewsArticleDto?>(null) }
 
@@ -61,34 +65,16 @@ fun ArtikelScreen(
             ) {
                 Spacer(modifier = Modifier.height(48.dp))
 
-                // ==================== PREMIUM BACK BUTTON + HEADER ====================
+                // ==================== PREMIUM HEADER ====================
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     val isDark = MaterialTheme.colorScheme.background == DarkBackground
                     val textPrimary = MaterialTheme.colorScheme.onBackground
-                    val surfaceColor = if (isDark) Color(0xFF151515) else MaterialTheme.colorScheme.surface
                     
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(surfaceColor)
-                            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
-                            .clickable { onNavigateBack() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.ArrowBack,
-                            contentDescription = "Kembali",
-                            tint = textPrimary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
                     Text(
-                        text = "Literasi Kesehatan",
+                        text = str("artikel"), // Assuming "artikel" is "Literasi Kesehatan" or "Artikel"
                         color = textPrimary,
                         fontSize = 26.sp,
                         fontWeight = FontWeight.ExtraBold
@@ -103,12 +89,12 @@ fun ArtikelScreen(
 
                 OutlinedTextField(
                     value = searchQuery,
-                    onValueChange = { viewModel.onQueryChanged(it) }, // Ketik langsung merubah daftar berita bray!
-                    placeholder = { Text("Cari topik gizi, lari, olahraga...", color = textSecondary, fontSize = 14.sp) },
+                    onValueChange = { viewModel.onQueryChanged(it) },
+                    placeholder = { Text(if (language == "en") "Search health topics..." else "Cari topik kesehatan...", color = textSecondary, fontSize = 14.sp) },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = accentColor) },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { viewModel.onQueryChanged("") }) { // Tombol silang buat reset berita terbaru
+                            IconButton(onClick = { viewModel.onQueryChanged("") }) { 
                                 Icon(Icons.Default.Close, contentDescription = null, tint = textSecondary)
                             }
                         }
@@ -136,7 +122,7 @@ fun ArtikelScreen(
                     }
                 } else if (daftarArtikel.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize().weight(1f), contentAlignment = Alignment.Center) {
-                        Text("Artikel gak ketemu bray. Coba cari kata lain!", color = textSecondary)
+                        Text(if (language == "en") "No articles found." else "Artikel tidak ditemukan.", color = textSecondary)
                     }
                 } else {
                     LazyColumn(
@@ -144,7 +130,7 @@ fun ArtikelScreen(
                         contentPadding = PaddingValues(bottom = 100.dp)
                     ) {
                         items(daftarArtikel) { artikel ->
-                            ArtikelModernCard(artikel) {
+                            ArtikelModernCard(artikel, language) {
                                 artikelDipilih = artikel // Deteksi klik kartu buat ngebaca bray!
                             }
                         }
@@ -157,8 +143,8 @@ fun ArtikelScreen(
 
 // ==================== KOMPONEN KARTU ARTIKEL BERGAYA MAJALAH ====================
 @Composable
-fun ArtikelModernCard(artikel: NewsArticleDto, onCardClick: () -> Unit) {
-    val tanggalFormat = artikel.publishedAt?.split("T")?.get(0) ?: "Terbaru"
+fun ArtikelModernCard(artikel: NewsArticleDto, language: String, onCardClick: () -> Unit) {
+    val tanggalFormat = artikel.publishedAt?.split("T")?.get(0) ?: (if(language == "en") "Latest" else "Terbaru")
 
     Box(
         modifier = Modifier
@@ -188,30 +174,38 @@ fun ArtikelModernCard(artikel: NewsArticleDto, onCardClick: () -> Unit) {
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
-                    onClick = { onCardClick() }, // Buka lembaran baca bray
+                    onClick = { onCardClick() }, 
                     modifier = Modifier.fillMaxWidth().height(44.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                 ) {
-                    // Tombol untuk membaca artikel
                     Icon(Icons.Default.MenuBook, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Baca Artikel", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(if(language == "en") "Read Article" else "Baca Artikel", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
             }
         }
     }
 }
 
-// ==================== LAYAR BACA PREMIUM DETAIL (FIX KEPOTONG) ====================
+// ==================== LAYAR BACA PREMIUM DETAIL ====================
 @Composable
 fun LayarBacaDetail(artikel: NewsArticleDto, onBackClick: () -> Unit) {
-    val scrollState = rememberScrollState()
-    val tanggalFormat = artikel.publishedAt?.split("T")?.get(0) ?: "Terbaru"
+    androidx.activity.compose.BackHandler {
+        onBackClick()
+    }
 
-    // 🔥 JURUS DEWA: Handler buat ngebuka browser luar bray!
+    val userPreferences: com.example.pantaujompo.data.local.datastore.UserPreferences = org.koin.compose.koinInject()
+    val language by userPreferences.language.collectAsState(initial = "id")
+
+    val scrollState = rememberScrollState()
+    val tanggalFormat = artikel.publishedAt?.split("T")?.get(0) ?: (if(language=="en") "Latest" else "Terbaru")
+
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+    val isDarkDetail = MaterialTheme.colorScheme.background == DarkBackground
+    val textPrimary = MaterialTheme.colorScheme.onBackground
+    val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
 
     MeshBackground(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -257,16 +251,16 @@ fun LayarBacaDetail(artikel: NewsArticleDto, onBackClick: () -> Unit) {
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(text = artikel.title ?: "", color = MaterialTheme.colorScheme.onBackground, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 32.sp)
+                Text(text = artikel.title ?: "", color = textPrimary, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 32.sp)
 
                 Spacer(modifier = Modifier.height(24.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // 1. Snippet Preview Berita (Yang kepotong dari API)
+                // 1. Snippet Preview Berita
                 Text(
-                    text = artikel.description ?: "Tidak ada deskripsi tambahan untuk berita ini bray.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = artikel.description ?: "",
+                    color = textSecondary,
                     fontSize = 15.sp,
                     lineHeight = 26.sp,
                     fontWeight = FontWeight.Medium
@@ -274,21 +268,18 @@ fun LayarBacaDetail(artikel: NewsArticleDto, onBackClick: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Kita bersihin tulisan [+XXXX chars] nya biar gak keliatan berantakan bray
-                val kontenBersih = artikel.content?.substringBefore("[+") ?: "Baca ulasan selengkapnya di bawah ini bray."
+                val kontenBersih = artikel.content?.substringBefore("[+") ?: ""
                 Text(
                     text = kontenBersih,
-                    color = Color.Gray,
+                    color = textSecondary,
                     fontSize = 14.sp,
                     lineHeight = 24.sp
                 )
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Tombol untuk membuka browser eksternal
                 Button(
                     onClick = {
-                        // Buka link url di browser perangkat
                         artikel.url?.let { uriHandler.openUri(it) }
                     },
                     modifier = Modifier.fillMaxWidth().height(54.dp),
@@ -296,7 +287,7 @@ fun LayarBacaDetail(artikel: NewsArticleDto, onBackClick: () -> Unit) {
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text(
-                        text = "BACA SELENGKAPNYA DI WEBSITE",
+                        text = if(language == "en") "READ FULL ARTICLE ON WEBSITE" else "BACA SELENGKAPNYA DI WEBSITE",
                         color = MaterialTheme.colorScheme.onPrimary,
                         fontWeight = FontWeight.ExtraBold,
                         fontSize = 14.sp,
