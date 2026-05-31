@@ -1,5 +1,5 @@
 # Pantau Jompo
-![CI](https://github.com/EL-graha26/Proyek-Pengembangan-Aplikasi-Mobile/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/EL-graha26/Proyek-Pengembangan-Aplikasi-Mobile/actions/workflows/ci.yml/badge.svg?branch=projeck/123140063-123140200-PantauJompo)
 
 **Aplikasi Tracking olahraga lari jalan dan Nutrisis harian mobile**
 
