@@ -191,22 +191,27 @@ fun ChatBubble(msg: ChatMessage, isDark: Boolean, accentColor: Color) {
             Spacer(modifier = Modifier.width(8.dp))
         }
 
-        Box(
-            modifier = Modifier
+        val bubbleShape = RoundedCornerShape(
+            topStart = 20.dp,
+            topEnd = 20.dp,
+            bottomStart = if (msg.isUser) 20.dp else 4.dp,
+            bottomEnd = if (msg.isUser) 4.dp else 20.dp
+        )
+
+        val finalModifier = if (msg.isUser) {
+            Modifier
                 .fillMaxWidth(0.8f)
-                .clip(RoundedCornerShape(
-                    topStart = 20.dp,
-                    topEnd = 20.dp,
-                    bottomStart = if (msg.isUser) 20.dp else 4.dp,
-                    bottomEnd = if (msg.isUser) 4.dp else 20.dp
-                ))
-                .glassCard(shape = RoundedCornerShape(
-                    topStart = 20.dp,
-                    topEnd = 20.dp,
-                    bottomStart = if (msg.isUser) 20.dp else 4.dp,
-                    bottomEnd = if (msg.isUser) 4.dp else 20.dp
-                ), neonColor = if(msg.isUser) accentColor else Color(0xFF00BCD4))
-                .padding(16.dp)
+                .clip(bubbleShape)
+                .background(accentColor)
+        } else {
+            Modifier
+                .fillMaxWidth(0.8f)
+                .clip(bubbleShape)
+                .glassCard(shape = bubbleShape, neonColor = Color(0xFF00BCD4))
+        }
+
+        Box(
+            modifier = finalModifier.padding(16.dp)
         ) {
             Text(
                 text = msg.text,

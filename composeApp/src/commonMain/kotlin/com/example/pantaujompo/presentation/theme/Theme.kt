@@ -17,15 +17,15 @@ val TextPrimary = Color(0xFFFFFFFF)
 val TextSecondary = Color(0xFFA0A0A0)
 val ErrorRed = Color(0xFFFF5252)
 
-// ===== LIGHT MODE PALETTE =====
-val LightBackground = Color(0xFFF0F2F5)
-val LightSurface = Color(0xFFFFFFFF)
-val LightPrimary = Color(0xFF00897B)       // Teal - good contrast on white
-val LightSecondary = Color(0xFF0097A7)
-val LightOnBackground = Color(0xFF0D0D0D)  // Near-black for max readability
-val LightOnSurface = Color(0xFF1A1A1A)
-val LightSecondaryText = Color(0xFF4A4A4A)
-val LightOutline = Color(0xFFBDBDBD)
+// ===== LIGHT MODE PALETTE (Minimalist 3-Color Theme) =====
+val LightBackground = Color(0xFFF4F6F8)    // Warna 1: Abu-abu sangat terang (Background)
+val LightSurface = Color(0xFFFFFFFF)       // Putih bersih untuk Card
+val LightPrimary = Color(0xFF2962FF)       // Warna 2: Biru Solid untuk Aksen/Tombol
+val LightSecondary = Color(0xFF0039CB)
+val LightOnBackground = Color(0xFF121212)  // Warna 3: Hitam pekat untuk Teks (Kontras tinggi)
+val LightOnSurface = Color(0xFF121212)
+val LightSecondaryText = Color(0xFF5F6368) // Abu-abu gelap untuk teks sekunder
+val LightOutline = Color(0xFFD1D5DB)       // Border yang lebih terlihat
 
 private val DarkColorScheme = darkColorScheme(
     primary = NeonGreen,

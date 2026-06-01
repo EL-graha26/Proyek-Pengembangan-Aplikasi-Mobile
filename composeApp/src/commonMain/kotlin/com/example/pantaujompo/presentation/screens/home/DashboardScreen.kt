@@ -377,8 +377,8 @@ fun DashboardScreen(
                         .padding(horizontal = 24.dp)
                         .scale(buttonScale)
                         .clip(RoundedCornerShape(24.dp))
-                        .background(Brush.linearGradient(listOf(Color(0xFF00E676).copy(alpha = 0.8f), Color(0xFF00BCD4).copy(alpha = 0.6f)))) // Green & Cyan accent glass
-                        .border(1.dp, Color.White.copy(alpha=0.5f), RoundedCornerShape(24.dp))
+                        .background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary))) // Use theme primary/secondary
+                        .border(1.dp, Color.White.copy(alpha=0.3f), RoundedCornerShape(24.dp))
                         .clickable(interactionSource = interactionSource, indication = null) { showActivityMenu = true }
                         .padding(16.dp)
                 ) {
