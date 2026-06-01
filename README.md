@@ -204,13 +204,65 @@ Fase inisialisasi arsitektur dan dokumentasi proyek.
 - [x] **P2** - UI Polish: Consistent styling (Modern Futuristic Glassmorphism), better UX
 - [x] **P2** - 1+ Bonus Feature: Dukungan Dark Mode, Animations, Multi-language (Lokalisasi)
 
-### 🚀 SPRINT 4: POLISH & TESTING (Minggu Depan)
+### ✅ SPRINT 4: POLISH & TESTING (Selesai)
 Fase akhir untuk penyempurnaan aplikasi sebelum rilis/penilaian.
 
-- [ ] Bug Fixes: Fix all known bugs dan edge cases
-- [ ] UI Polish: Consistent styling, spacing, typography (Final review)
-- [ ] Testing: Unit tests, UI tests, mencapai target coverage
-- [ ] Performance: Optimize slow screens, reduce lag & memory leaks
+- [x] **P0** - Fix All Known Bugs: No crash, no broken features
+- [x] **P0** - UI Polish: Consistent spacing, typography, colors
+- [x] **P0** - Unit Tests: Repository + ViewModel tests (10+ total)
+- [x] **P1** - UI Tests: Critical user journeys (3+)
+- [x] **P1** - Edge Cases: Empty states, errors, loading handled
+- [x] **P2** - Performance: No visible lag or jank
+
+---
+
+## 🧪 Panduan Pengujian (Testing)
+
+Proyek ini dilengkapi dengan dua jenis pengujian yang sesuai dengan standar Sprint 4:
+
+### 1. Unit Test (Pengujian Logika)
+Berfokus pada pengujian `ViewModel` dan `Repository` (contoh: `DashboardViewModel`, `RiwayatViewModel`). Tes ini sangat cepat dan berjalan langsung di mesin JVM.
+- **Cara Menjalankan via Terminal:**
+  ```bash
+  ./gradlew :composeApp:testDebugUnitTest
+  ```
+- **Cara Menjalankan via Android Studio:** Buka file berakhiran `Test.kt` (misal `RiwayatViewModelTest.kt`) di folder `androidUnitTest` dan tekan tombol Play hijau.
+
+### 2. UI Test (Pengujian Antarmuka)
+Berfokus pada interaksi antarmuka pengguna (contoh: simulasi klik tombol, mengecek komponen layar). Tes ini wajib dijalankan dalam lingkungan Android (Emulator / HP Fisik).
+- **Cara Menjalankan via Terminal:**
+  ```bash
+  ./gradlew :composeApp:connectedDebugAndroidTest
+  ```
+- **Cara Menjalankan via Android Studio:** Sambungkan Emulator Android, buka file `ProfileSetupUiTest.kt` di folder `androidInstrumentedTest`, lalu tekan tombol Play hijau di sebelah fungsi pengujian.
+
+---
+
+## 🐛 Laporan Pelacakan Bug (Bug Tracking & Resolution)
+
+Karena keterbatasan akses GitHub Issues pada repositori *fork*, pelacakan dan penyelesaian *bug* untuk Sprint 4 didokumentasikan di sini menggunakan standar pelaporan *bug* profesional.
+
+### Issue #1: Crash saat menjalankan UI Test (Intent Process Mismatch)
+**Description:**
+Aplikasi penguji (*Test Runner*) mengalami `RuntimeException` saat mencoba meluncurkan komponen tes pada Emulator Android 11+.
+
+**Steps to Reproduce:**
+1. Buka Android Studio dan jalankan `ProfileSetupUiTest.kt`.
+2. Tunggu proses kompilasi selesai.
+3. *Error* muncul di logcat: `Intent in process com.example.pantaujompo resolved to different process com.example.pantaujompo.test`.
+
+**Expected Behavior:**
+Bot penguji berhasil masuk ke aplikasi utama dan mengeksekusi klik pada tombol "Perempuan" serta "Mulai Sekarang".
+
+**Actual Behavior:**
+Bot ditolak oleh sistem Android karena `ui-test-manifest` terdaftar di dalam koper tes (`.test`), bukan di aplikasi utama, sehingga proses tidak sinkron.
+
+**Device/Environment:**
+- Device: Emulator Pixel 7 API 35
+- OS: Android 15
+
+**Status & Resolution (Selesai):** ✅
+*Bug* telah diperbaiki dengan memindahkan *library* `androidx.compose.ui:ui-test-manifest` keluar dari ruang lingkup `androidInstrumentedTest` dan memasukkannya ke konfigurasi tingkat atas menggunakan `debugImplementation`. Hal ini sukses menanamkan jembatan pengujian ke dalam aplikasi utama.
 
 ---
 

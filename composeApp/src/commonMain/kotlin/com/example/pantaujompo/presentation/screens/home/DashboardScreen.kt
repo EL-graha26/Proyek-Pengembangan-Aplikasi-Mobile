@@ -192,7 +192,9 @@ fun DashboardScreen(
                         if (userName.isNotBlank()) userName else str("pengguna"),
                         color = textPrimary,
                         fontWeight = FontWeight.ExtraBold,
-                        fontSize = 20.sp
+                        fontSize = 20.sp,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                 }
                 
@@ -211,7 +213,7 @@ fun DashboardScreen(
                     )
                 }
                 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(16.dp))
                 
                 // AI Button (Magic Glowing)
                 val infiniteTransition = rememberInfiniteTransition()
@@ -242,7 +244,7 @@ fun DashboardScreen(
                         .clickable { onNavigateToAiChat() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.AutoAwesome, null, tint = accentColor, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.AutoAwesome, null, tint = accentColor, modifier = Modifier.size(24.dp))
                 }
             }
 
@@ -253,7 +255,7 @@ fun DashboardScreen(
                 state = listState,
                 modifier = Modifier.fillMaxWidth(),
                 contentPadding = PaddingValues(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(weekDays) { (day, date, isToday) ->
                     Box(
@@ -315,7 +317,7 @@ fun DashboardScreen(
             )
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 HomeStatCard(Modifier.weight(1f), Icons.Default.DirectionsRun, str("total_jarak"),
                     String.format(Locale.US, "%.1f", weeklyJarak), "km", Color(0xFF00E676), isDark)
@@ -465,7 +467,7 @@ fun DashboardScreen(
                     .padding(horizontal = 24.dp)
                     .glassCard(shape = RoundedCornerShape(22.dp), neonColor = Color(0xFF00BCD4))
                     .clickable { onNavigateToRiwayat() }
-                    .padding(20.dp)
+                    .padding(24.dp)
             ) {
                 Column {
                     Row(
@@ -493,7 +495,7 @@ fun DashboardScreen(
                 color = textPrimary, 
                 fontWeight = FontWeight.ExtraBold, 
                 fontSize = 18.sp,
-                modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 12.dp)
+                modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 16.dp)
             )
             
             val tips = listOf(
@@ -516,7 +518,7 @@ fun DashboardScreen(
             
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.fillMaxWidth().height(120.dp),
+                modifier = Modifier.fillMaxWidth().height(124.dp),
                 contentPadding = PaddingValues(horizontal = 24.dp),
                 pageSpacing = 16.dp
             ) { page ->
@@ -531,7 +533,7 @@ fun DashboardScreen(
             
             // Pager Indicator
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                 horizontalArrangement = Arrangement.Center
             ) {
                 repeat(tips.size) { index ->
@@ -567,7 +569,7 @@ fun DashboardScreen(
                     showActivityMenu = false
                     onNavigateToTracking("Jalan")
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 ActivityMenuItem(
                     str("lari_jogging"), 
                     Icons.Default.DirectionsRun, 
@@ -577,7 +579,7 @@ fun DashboardScreen(
                     showActivityMenu = false
                     onNavigateToTracking("Lari")
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 ActivityMenuItem(
                     str("bersepeda"), 
                     Icons.Default.DirectionsBike, 
@@ -628,11 +630,11 @@ fun HomeStatCard(modifier: Modifier, icon: ImageVector, title: String, value: St
     Box(
         modifier = modifier
             .height(100.dp)
-            .background(surfaceColor, RoundedCornerShape(20.dp))
-            .border(1.dp, color.copy(0.25f), RoundedCornerShape(20.dp))
+            .background(surfaceColor, RoundedCornerShape(24.dp))
+            .border(1.dp, color.copy(0.25f), RoundedCornerShape(24.dp))
     ) {
-        Column(modifier = Modifier.padding(12.dp).fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
-            Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
+        Column(modifier = Modifier.padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
+            Icon(icon, null, tint = color, modifier = Modifier.size(24.dp))
             Column {
                 Text(title, color = textSecondaryColor, fontSize = 10.sp, fontWeight = FontWeight.Medium)
                 Row(verticalAlignment = Alignment.Bottom) {
@@ -668,7 +670,7 @@ fun ActivityCard(
                     modifier = Modifier.size(40.dp).clip(CircleShape).background(color.copy(0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
+                    Icon(icon, null, tint = color, modifier = Modifier.size(24.dp))
                 }
                 Icon(Icons.Default.ArrowOutward, null, tint = textSecondaryColor, modifier = Modifier.size(16.dp))
             }
@@ -681,7 +683,7 @@ fun ActivityCard(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(unit, color = textSecondaryColor, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 Box(modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(bgColor)) {
                     val safeProgress = progress.coerceIn(0.01f, 1f)
                     if (progress > 0f) {
@@ -719,9 +721,9 @@ fun LifestyleCard(icon: ImageVector, title: String, desc: String, color: Color, 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(surfaceColor)
-            .border(1.dp, color.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+            .border(1.dp, color.copy(alpha = 0.3f), RoundedCornerShape(24.dp))
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

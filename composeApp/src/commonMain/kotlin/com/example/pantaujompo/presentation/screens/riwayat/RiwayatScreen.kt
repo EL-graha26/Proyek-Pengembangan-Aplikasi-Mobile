@@ -169,7 +169,7 @@ fun RiwayatListView(
     MeshBackground(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 120.dp)
+            contentPadding = PaddingValues(bottom = 124.dp)
         ) {
             // ======== HEADER ========
             item {
@@ -184,7 +184,7 @@ fun RiwayatListView(
                         Text("Riwayat & Pencapaian", color = textSecondary, fontSize = 13.sp)
                     }
                 }
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // ======== TAB SEGMENTED BUTTON ========
                 Row(
@@ -205,7 +205,7 @@ fun RiwayatListView(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(16.dp))
                                 .background(
                                     if (isSelected) activeColor
                                     else Color.Transparent
@@ -214,7 +214,7 @@ fun RiwayatListView(
                                     selectedTabIndex = index
                                     selectedDayKey = null
                                 }
-                                .padding(vertical = 10.dp),
+                                .padding(vertical = 8.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -317,13 +317,13 @@ fun RiwayatListView(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(24.dp))
 
                         // ==== BAR CHART 7 HARI ====
                         Row(modifier = Modifier.fillMaxWidth()) {
                             // Label sumbu Y (kiri)
                             Column(
-                                modifier = Modifier.width(38.dp).height(120.dp),
+                                modifier = Modifier.width(38.dp).height(124.dp),
                                 verticalArrangement = Arrangement.SpaceBetween
                             ) {
                                 // Format label: jika >= 1000 pakai 'k', jika float tampilkan 1 desimal
@@ -416,14 +416,14 @@ fun RiwayatListView(
 
                 // Chip info filter aktif — tampil saat ada hari dipilih
                 if (selectedDayKey != null) {
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 24.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(16.dp))
                             .background(barColor.copy(0.1f))
-                            .border(1.dp, barColor.copy(0.25f), RoundedCornerShape(12.dp))
+                            .border(1.dp, barColor.copy(0.25f), RoundedCornerShape(16.dp))
                             .clickable { selectedDayKey = null }
                             .padding(horizontal = 14.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -611,9 +611,9 @@ fun RiwayatListView(
                     Spacer(modifier = Modifier.height(16.dp))
                     Box(
                         modifier = Modifier.fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(16.dp))
                             .background(accent2.copy(0.08f))
-                            .border(1.dp, accent2.copy(0.2f), RoundedCornerShape(12.dp))
+                            .border(1.dp, accent2.copy(0.2f), RoundedCornerShape(16.dp))
                             .padding(14.dp)
                     ) {
                         Column {
@@ -645,10 +645,10 @@ fun WeeklyStatItem(label: String, value: String, color: Color, modifier: Modifie
 fun NutrientDetailChip(label: String, value: Int, unit: String, color: Color, modifier: Modifier) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(color.copy(0.12f))
-            .border(1.dp, color.copy(0.2f), RoundedCornerShape(12.dp))
-            .padding(vertical = 12.dp),
+            .border(1.dp, color.copy(0.2f), RoundedCornerShape(16.dp))
+            .padding(vertical = 16.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -709,7 +709,7 @@ fun ItemOlahragaCard(
             }
             // Tombol hapus
             IconButton(onClick = { showDeleteConfirm = true }) {
-                Icon(Icons.Default.DeleteOutline, null, tint = Color(0xFFFF5252).copy(0.7f), modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.DeleteOutline, null, tint = Color(0xFFFF5252).copy(0.7f), modifier = Modifier.size(24.dp))
             }
         }
     }
@@ -803,9 +803,9 @@ fun ItemMakananCard(
                 }
             }
             IconButton(onClick = { showDeleteConfirm = true }) {
-                Icon(Icons.Default.DeleteOutline, null, tint = Color(0xFFFF5252).copy(0.7f), modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.DeleteOutline, null, tint = Color(0xFFFF5252).copy(0.7f), modifier = Modifier.size(24.dp))
             }
-            Icon(Icons.Default.ChevronRight, null, tint = textSecondary, modifier = Modifier.size(20.dp))
+            Icon(Icons.Default.ChevronRight, null, tint = textSecondary, modifier = Modifier.size(24.dp))
         }
     }
 
