@@ -381,19 +381,21 @@ fun RiwayatListView(
                                         Spacer(modifier = Modifier.height(2.dp))
 
                                         // Batang bar dengan animasi tinggi
-                                        Box(
-                                            modifier = Modifier
-                                                .width(if (isSelected) 24.dp else 18.dp)
-                                                .fillMaxHeight(heightFrac.coerceAtLeast(0.04f))
-                                                .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
-                                                .background(
-                                                    when {
-                                                        isSelected -> barColor
-                                                        rawVal > 0f -> barColor.copy(0.35f)
-                                                        else -> MaterialTheme.colorScheme.surfaceVariant
-                                                    }
-                                                )
-                                        )
+                                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.BottomCenter) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .width(if (isSelected) 24.dp else 18.dp)
+                                                    .fillMaxHeight(heightFrac.coerceAtLeast(0.04f))
+                                                    .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
+                                                    .background(
+                                                        when {
+                                                            isSelected -> barColor
+                                                            rawVal > 0f -> barColor.copy(0.35f)
+                                                            else -> MaterialTheme.colorScheme.surfaceVariant
+                                                        }
+                                                    )
+                                            )
+                                        }
 
                                         Spacer(modifier = Modifier.height(6.dp))
 

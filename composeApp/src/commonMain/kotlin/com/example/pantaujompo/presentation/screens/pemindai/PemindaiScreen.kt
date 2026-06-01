@@ -51,7 +51,7 @@ fun PemindaiScreen(
     viewModel: RiwayatViewModel,
     onSimpanClick: (MakananEntity) -> Unit
 ) {
-    val makananList by viewModel.makananState.collectAsState()
+    val makananList by viewModel.makananHariIniState.collectAsState()
     val targetKalori by viewModel.targetKalori.collectAsState()
     
     var showScanner by remember { mutableStateOf(false) }

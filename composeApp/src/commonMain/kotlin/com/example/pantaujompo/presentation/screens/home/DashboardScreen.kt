@@ -61,16 +61,18 @@ fun DashboardScreen(
     
     val userName by viewModel.userName.collectAsState()
     val profileImageUri by viewModel.profileImageUri.collectAsState()
-    val totalJarak by viewModel.totalJarak.collectAsState(initial = 0.0)
-    val totalKalori by viewModel.totalKalori.collectAsState(initial = 0)
-    val totalDurasi by viewModel.totalDurasi.collectAsState(initial = 0)
-    val totalSesi by viewModel.totalSesi.collectAsState(initial = 0)
+    val weeklyJarak by viewModel.weeklyJarak.collectAsState(initial = 0.0)
+    val weeklyKalori by viewModel.weeklyKalori.collectAsState(initial = 0)
+    val weeklyDurasi by viewModel.weeklyDurasi.collectAsState(initial = 0)
     
-    val totalKarbo by viewModel.totalKarbo.collectAsState(initial = 0)
-    val totalProtein by viewModel.totalProtein.collectAsState(initial = 0)
-    val totalLemak by viewModel.totalLemak.collectAsState(initial = 0)
+    val dailyJarak by viewModel.dailyJarak.collectAsState(initial = 0.0)
+    val dailyKalori by viewModel.dailyKalori.collectAsState(initial = 0)
     
-    val avgPace = viewModel.getRataRataPace(totalJarak, totalDurasi)
+    val dailyKarbo by viewModel.dailyKarbo.collectAsState(initial = 0)
+    val dailyProtein by viewModel.dailyProtein.collectAsState(initial = 0)
+    val dailyLemak by viewModel.dailyLemak.collectAsState(initial = 0)
+    
+    val avgPace = viewModel.getRataRataPace(weeklyJarak, weeklyDurasi)
 
     val isDark by userPreferences.isDarkMode.collectAsState(initial = true)
     val textPrimary = MaterialTheme.colorScheme.onBackground
@@ -316,11 +318,11 @@ fun DashboardScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 HomeStatCard(Modifier.weight(1f), Icons.Default.DirectionsRun, str("total_jarak"),
-                    String.format(Locale.US, "%.1f", totalJarak), "km", Color(0xFF00E676), isDark)
+                    String.format(Locale.US, "%.1f", weeklyJarak), "km", Color(0xFF00E676), isDark)
                 HomeStatCard(Modifier.weight(1f), Icons.Default.LocalFireDepartment, str("kalori"),
-                    "$totalKalori", "kcal", Color(0xFFFF9100), isDark)
+                    "$weeklyKalori", "kcal", Color(0xFFFF9100), isDark)
                 HomeStatCard(Modifier.weight(1f), Icons.Default.Timer, str("durasi"),
-                    "$totalDurasi", "min", Color(0xFF00BCD4), isDark)
+                    "$weeklyDurasi", "min", Color(0xFF00BCD4), isDark)
             }
 
             Spacer(modifier = Modifier.height(28.dp))
@@ -433,22 +435,22 @@ fun DashboardScreen(
                 ActivityCard(
                     modifier = Modifier.weight(1f),
                     title = str("kalori_aktif"),
-                    value = "$totalKalori",
+                    value = "$dailyKalori",
                     unit = "kcal",
                     icon = Icons.Default.LocalFireDepartment,
                     color = Color(0xFFFF9100),
-                    progress = if (totalKalori > 0) (totalKalori / 500f).coerceAtMost(1f) else 0f,
+                    progress = if (dailyKalori > 0) (dailyKalori / 500f).coerceAtMost(1f) else 0f,
                     isDark = isDark,
                     onClick = onNavigateToRiwayat
                 )
                 ActivityCard(
                     modifier = Modifier.weight(1f),
                     title = str("jarak_tempuh"),
-                    value = String.format(Locale.US, "%.1f", totalJarak),
+                    value = String.format(Locale.US, "%.1f", dailyJarak),
                     unit = "km",
                     icon = Icons.Default.Place,
                     color = Color(0xFF00E676),
-                    progress = if (totalJarak > 0) (totalJarak / 5.0).toFloat().coerceAtMost(1f) else 0f,
+                    progress = if (dailyJarak > 0) (dailyJarak / 5.0).toFloat().coerceAtMost(1f) else 0f,
                     isDark = isDark,
                     onClick = onNavigateToRiwayat
                 )
@@ -476,9 +478,9 @@ fun DashboardScreen(
                     }
                     Spacer(modifier = Modifier.height(14.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        NutritionBarItem(str("karbo"), "${totalKarbo}g", Color(0xFF00BCD4), isDark)
-                        NutritionBarItem(str("protein"), "${totalProtein}g", Color(0xFF00E676), isDark)
-                        NutritionBarItem(str("lemak"), "${totalLemak}g", Color(0xFFFF5252), isDark)
+                        NutritionBarItem(str("karbo"), "${dailyKarbo}g", Color(0xFF00BCD4), if (dailyKarbo > 0) (dailyKarbo / 300f).coerceAtMost(1f) else 0f, isDark)
+                        NutritionBarItem(str("protein"), "${dailyProtein}g", Color(0xFF00E676), if (dailyProtein > 0) (dailyProtein / 100f).coerceAtMost(1f) else 0f, isDark)
+                        NutritionBarItem(str("lemak"), "${dailyLemak}g", Color(0xFFFF5252), if (dailyLemak > 0) (dailyLemak / 70f).coerceAtMost(1f) else 0f, isDark)
                     }
                 }
             }
@@ -692,13 +694,19 @@ fun ActivityCard(
 }
 
 @Composable
-fun NutritionBarItem(label: String, value: String, color: Color, isDark: Boolean) {
+fun NutritionBarItem(label: String, value: String, color: Color, progress: Float, isDark: Boolean) {
+    val bgColor = if (isDark) Color(0xFF222222) else Color(0xFFE8ECF0)
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
         Spacer(modifier = Modifier.height(6.dp))
         Text(value, color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(6.dp))
-        Box(modifier = Modifier.width(36.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(color))
+        Box(modifier = Modifier.width(42.dp).height(6.dp).clip(RoundedCornerShape(3.dp)).background(bgColor)) {
+            val safeProgress = progress.coerceIn(0.01f, 1f)
+            if (progress > 0f) {
+                Box(modifier = Modifier.fillMaxWidth(safeProgress).height(6.dp).clip(RoundedCornerShape(3.dp)).background(color))
+            }
+        }
     }
 }
 
