@@ -131,17 +131,25 @@ fun RiwayatListView(
         } catch (e: Exception) { "" }
     }
 
-    // Menggunakan filter dari ViewModel, hanya terapkan selectedDayKey dari bar chart jika ada
+    // Hitung ringkasan mingguan olahraga (pindahkan ke atas untuk filter)
+    val weekKeys = weekDays.map { it.third }.toSet()
+
+    // Menggunakan filter dari ViewModel, hanya terapkan selectedDayKey dari bar chart jika ada, atau batas filter per minggu
     val filteredLariList = riwayatLariList
-        .filter { selectedDayKey == null || sdfKey.format(Date(it.tanggal)) == selectedDayKey }
+        .filter { 
+            val dateKey = sdfKey.format(Date(it.tanggal))
+            if (selectedDayKey != null) dateKey == selectedDayKey else dateKey in weekKeys
+        }
         .sortedByDescending { it.tanggal }
 
     val filteredMakananList = makananList
-        .filter { selectedDayKey == null || sdfKey.format(Date(it.tanggal)) == selectedDayKey }
+        .filter { 
+            val dateKey = sdfKey.format(Date(it.tanggal))
+            if (selectedDayKey != null) dateKey == selectedDayKey else dateKey in weekKeys
+        }
         .sortedByDescending { it.tanggal }
 
     // Hitung ringkasan mingguan olahraga
-    val weekKeys = weekDays.map { it.third }.toSet()
     val weeklyLari = riwayatLariList.filter { sdfKey.format(Date(it.tanggal)) in weekKeys }
     val weeklyKm = weeklyLari.sumOf { it.jarak }
     val weeklyMenit = weeklyLari.sumOf { it.durasi }

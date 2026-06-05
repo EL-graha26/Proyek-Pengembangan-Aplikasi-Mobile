@@ -1,21 +1,28 @@
 package com.example.pantaujompo.presentation.screens.home
 
+import android.annotation.SuppressLint
+import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import android.location.Geocoder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -29,22 +36,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
+import com.example.pantaujompo.core.util.AppStrings
+import com.example.pantaujompo.data.local.datastore.UserPreferences
+import com.example.pantaujompo.data.remote.model.WeatherInfo
+import com.example.pantaujompo.domain.TrackingManager
+import com.example.pantaujompo.presentation.theme.*
+import com.google.android.gms.location.LocationServices
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import java.text.SimpleDateFormat
 import java.util.*
-import com.example.pantaujompo.presentation.theme.*
-import com.example.pantaujompo.core.util.AppStrings
-import com.example.pantaujompo.data.local.datastore.UserPreferences
-import org.koin.compose.koinInject
-import kotlinx.coroutines.launch
-import androidx.compose.ui.draw.rotate
-import com.example.pantaujompo.domain.TrackingManager
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,6 +64,7 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = koinViewModel(),
     userPreferences: UserPreferences = koinInject()
 ) {
+    val context = LocalContext.current
     val language by userPreferences.language.collectAsState(initial = "id")
     fun str(key: String): String = AppStrings.get(key, language)
     
@@ -71,53 +80,36 @@ fun DashboardScreen(
     val dailyKarbo by viewModel.dailyKarbo.collectAsState(initial = 0)
     val dailyProtein by viewModel.dailyProtein.collectAsState(initial = 0)
     val dailyLemak by viewModel.dailyLemak.collectAsState(initial = 0)
-    
-    val avgPace = viewModel.getRataRataPace(weeklyJarak, weeklyDurasi)
 
     val isDark by userPreferences.isDarkMode.collectAsState(initial = true)
     val textPrimary = MaterialTheme.colorScheme.onBackground
     val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
     val accentColor = MaterialTheme.colorScheme.primary
     val surfaceColor = if (isDark) Color(0xFF151515) else MaterialTheme.colorScheme.surface
+    val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
 
     var showActivityMenu by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val greeting = when (hour) {
-        in 0..4 -> str("selamat_malam") // dini hari
+        in 0..4 -> str("selamat_malam")
         in 5..10 -> str("selamat_pagi")
         in 11..14 -> str("selamat_siang")
         in 15..17 -> str("selamat_sore")
         else -> str("selamat_malam")
     }
 
-    val aiSuggestion by viewModel.aiInsight.collectAsState()
-
     // Tracking state
     val isTrackingStarted by TrackingManager.hasStarted.collectAsState()
     val trackingSeconds by TrackingManager.seconds.collectAsState()
-    val trackingDistance by TrackingManager.totalDistanceMeters.collectAsState()
-    val currentJenis = TrackingManager.jenisOlahraga.collectAsState().value
+    val weatherService = koinInject<com.example.pantaujompo.data.remote.api.WeatherService>()
+    var weatherInfo by remember { mutableStateOf<WeatherInfo?>(null) }
+    var locationName by remember { mutableStateOf("Lokasi Anda") }
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+    var locationFetched by remember { mutableStateOf(false) }
 
     val appLocale = if (language == "en") Locale("en", "US") else Locale("id", "ID")
-
-    // Request Permissions
-    val permissionsLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions(),
-        onResult = { permissions: Map<String, Boolean> -> }
-    )
-
-    LaunchedEffect(Unit) {
-        viewModel.fetchDailyInsight()
-        permissionsLauncher.launch(
-            arrayOf(
-                android.Manifest.permission.ACCESS_FINE_LOCATION,
-                android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                android.Manifest.permission.CAMERA
-            )
-        )
-    }
 
     // Calendar week
     val calendar = Calendar.getInstance(appLocale).apply {
@@ -146,6 +138,79 @@ fun DashboardScreen(
         }
     }
 
+    val trackingDistance by TrackingManager.totalDistanceMeters.collectAsState()
+    val currentJenis = TrackingManager.jenisOlahraga.collectAsState().value
+
+    @SuppressLint("MissingPermission")
+    fun fetchWeather() {
+        if (!locationFetched) {
+            try {
+                fusedLocationClient.getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, null).addOnCompleteListener { task ->
+                    val loc = if (task.isSuccessful) task.result else null
+                    coroutineScope.launch {
+                        try {
+                            val lat = loc?.latitude ?: -6.2088
+                            val lon = loc?.longitude ?: 106.8456
+                            
+                            weatherInfo = weatherService.getWeatherAndAqi(lat, lon)
+                            
+                            if (loc != null) {
+                                withContext(Dispatchers.IO) {
+                                    try {
+                                        val geocoder = Geocoder(context, Locale.getDefault())
+                                        val addresses = geocoder.getFromLocation(lat, lon, 1)
+                                        if (!addresses.isNullOrEmpty()) {
+                                            val address = addresses[0]
+                                            val city = address.locality ?: address.subAdminArea ?: address.adminArea
+                                            if (city != null) locationName = city
+                                        }
+                                    } catch (e: Exception) {
+                                        // Ignore geocoding errors
+                                    }
+                                }
+                            } else {
+                                locationName = "Jakarta (Default)"
+                            }
+                        } catch (e: Exception) {
+                            // If it fails, we will show "Gagal"
+                            locationName = "Gagal memuat"
+                        } finally {
+                            locationFetched = true
+                        }
+                    }
+                }
+            } catch (e: SecurityException) {
+                locationFetched = true
+            }
+        }
+    }
+
+    val permissionsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+        onResult = { permissions -> 
+            val fine = permissions[android.Manifest.permission.ACCESS_FINE_LOCATION] == true
+            val coarse = permissions[android.Manifest.permission.ACCESS_COARSE_LOCATION] == true
+            if (fine || coarse) fetchWeather()
+        }
+    )
+
+    LaunchedEffect(Unit) {
+        viewModel.fetchDailyInsight()
+        
+        val hasFine = ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val hasCoarse = ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (hasFine || hasCoarse) {
+            fetchWeather()
+        } else {
+            permissionsLauncher.launch(
+                arrayOf(
+                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+
     MeshBackground(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -159,7 +224,6 @@ fun DashboardScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Avatar with Glass Effect
                 Box(
                     modifier = Modifier
                         .size(54.dp)
@@ -198,7 +262,6 @@ fun DashboardScreen(
                     )
                 }
                 
-                // Theme Toggle
                 Box(
                     modifier = Modifier.size(44.dp).clip(CircleShape)
                         .background(if (isDark) Color(0xFF222222) else Color(0xFFE0E0E0))
@@ -212,7 +275,7 @@ fun DashboardScreen(
                         modifier = Modifier.size(22.dp)
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.width(16.dp))
                 
                 // AI Button (Magic Glowing)
@@ -220,10 +283,6 @@ fun DashboardScreen(
                 val pulseScale by infiniteTransition.animateFloat(
                     initialValue = 0.9f, targetValue = 1.1f,
                     animationSpec = infiniteRepeatable(tween(1200, easing = FastOutSlowInEasing), RepeatMode.Reverse)
-                )
-                val rotateBorder by infiniteTransition.animateFloat(
-                    initialValue = 0f, targetValue = 360f,
-                    animationSpec = infiniteRepeatable(tween(3000, easing = LinearEasing), RepeatMode.Restart)
                 )
                 
                 val sweepGradient = if (isDark) {
@@ -250,7 +309,7 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // ==================== WEEK CALENDAR (Auto Scroll & Glassmorphism) ====================
+            // ==================== CALENDAR DAYS ====================
             LazyRow(
                 state = listState,
                 modifier = Modifier.fillMaxWidth(),
@@ -297,7 +356,7 @@ fun DashboardScreen(
                                 Text(
                                     date, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp,
                                     color = if (isToday) Color.Black
-                                    else if (isDark) Color.White else LightOnSurface
+                                    else if (isDark) Color.White else Color(0xFF001524)
                                 )
                             }
                         }
@@ -307,7 +366,64 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // ==================== STATS ROW (Total Minggu Ini dipindah ke bawah Kalender) ====================
+            // ==================== WEATHER WIDGET ====================
+            if (weatherInfo != null) {
+                val isBadAqi = weatherInfo!!.aqi >= 60
+                val aqiColor = if (isBadAqi) Color(0xFFFF9100) else Color(0xFF00E676)
+                val aqiText = if (isBadAqi) "Kurang Sehat" else "Baik"
+                val iconWeather = if (weatherInfo!!.weatherCode <= 3) "☀️" else if (weatherInfo!!.weatherCode <= 69) "🌧️" else "☁️"
+                
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(surfaceVariant.copy(alpha = 0.25f))
+                        .border(1.dp, aqiColor.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(iconWeather, fontSize = 24.sp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("${weatherInfo!!.temperature}°C", color = textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+                        
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("AQI: $aqiText", color = textPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(aqiColor))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        locationName, 
+                        color = textSecondary, 
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(start = 36.dp) // Align under the temperature text
+                    )
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(surfaceVariant.copy(alpha = 0.3f))
+                        .padding(horizontal = 16.dp, vertical = 18.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text("📍 Mencari lokasi dan cuaca...", color = textSecondary, fontSize = 13.sp)
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            // ==================== STATS ROW ====================
             Text(
                 str("total_minggu_ini"), 
                 color = textPrimary, 
@@ -316,14 +432,14 @@ fun DashboardScreen(
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
             )
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).height(IntrinsicSize.Max),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                HomeStatCard(Modifier.weight(1f), Icons.Default.DirectionsRun, str("total_jarak"),
+                HomeStatCard(Modifier.weight(1f).fillMaxHeight(), Icons.Default.DirectionsRun, str("total_jarak"),
                     String.format(Locale.US, "%.1f", weeklyJarak), "km", Color(0xFF00E676), isDark)
-                HomeStatCard(Modifier.weight(1f), Icons.Default.LocalFireDepartment, str("kalori"),
+                HomeStatCard(Modifier.weight(1f).fillMaxHeight(), Icons.Default.LocalFireDepartment, str("kalori"),
                     "$weeklyKalori", "kcal", Color(0xFFFF9100), isDark)
-                HomeStatCard(Modifier.weight(1f), Icons.Default.Timer, str("durasi"),
+                HomeStatCard(Modifier.weight(1f).fillMaxHeight(), Icons.Default.Timer, str("durasi"),
                     "$weeklyDurasi", "min", Color(0xFF00BCD4), isDark)
             }
 
@@ -629,12 +745,13 @@ fun HomeStatCard(modifier: Modifier, icon: ImageVector, title: String, value: St
 
     Box(
         modifier = modifier
-            .height(100.dp)
             .background(surfaceColor, RoundedCornerShape(24.dp))
             .border(1.dp, color.copy(0.25f), RoundedCornerShape(24.dp))
     ) {
-        Column(modifier = Modifier.padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
+        Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
             Icon(icon, null, tint = color, modifier = Modifier.size(24.dp))
+            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(12.dp))
             Column {
                 Text(title, color = textSecondaryColor, fontSize = 10.sp, fontWeight = FontWeight.Medium)
                 Row(verticalAlignment = Alignment.Bottom) {

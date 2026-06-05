@@ -91,12 +91,12 @@ fun DetailRiwayatScreen(
     var isExpanded by remember { mutableStateOf(riwayat.photoUri.isNullOrBlank()) }
 
     val standardTileSource = remember {
-        object : OnlineTileSourceBase("GoogleMaps", 1, 20, 256, ".png", arrayOf("https://mt0.google.com/vt/lyrs=m&hl=id&z=", "https://mt1.google.com/vt/lyrs=m&hl=id&z=", "https://mt2.google.com/vt/lyrs=m&hl=id&z=", "https://mt3.google.com/vt/lyrs=m&hl=id&z=")) {
+        object : OnlineTileSourceBase("GoogleMaps", 1, 20, 256, ".png", arrayOf("https://mt0.google.com/vt/lyrs=p&hl=id&scale=2&z=", "https://mt1.google.com/vt/lyrs=p&hl=id&scale=2&z=", "https://mt2.google.com/vt/lyrs=p&hl=id&scale=2&z=", "https://mt3.google.com/vt/lyrs=p&hl=id&scale=2&z=")) {
             override fun getTileURLString(pMapTileIndex: Long): String = baseUrl + MapTileIndex.getZoom(pMapTileIndex) + "&x=" + MapTileIndex.getX(pMapTileIndex) + "&y=" + MapTileIndex.getY(pMapTileIndex)
         }
     }
     val satelliteTileSource = remember {
-        object : OnlineTileSourceBase("GoogleSatellite", 1, 20, 256, ".png", arrayOf("https://mt0.google.com/vt/lyrs=s&hl=id&z=", "https://mt1.google.com/vt/lyrs=s&hl=id&z=", "https://mt2.google.com/vt/lyrs=s&hl=id&z=", "https://mt3.google.com/vt/lyrs=s&hl=id&z=")) {
+        object : OnlineTileSourceBase("GoogleSatellite", 1, 20, 256, ".png", arrayOf("https://mt0.google.com/vt/lyrs=s&hl=id&scale=2&z=", "https://mt1.google.com/vt/lyrs=s&hl=id&scale=2&z=", "https://mt2.google.com/vt/lyrs=s&hl=id&scale=2&z=", "https://mt3.google.com/vt/lyrs=s&hl=id&scale=2&z=")) {
             override fun getTileURLString(pMapTileIndex: Long): String = baseUrl + MapTileIndex.getZoom(pMapTileIndex) + "&x=" + MapTileIndex.getX(pMapTileIndex) + "&y=" + MapTileIndex.getY(pMapTileIndex)
         }
     }

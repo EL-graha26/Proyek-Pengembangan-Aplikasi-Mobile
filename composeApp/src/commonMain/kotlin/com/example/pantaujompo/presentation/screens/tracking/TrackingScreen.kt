@@ -96,12 +96,12 @@ fun TrackingScreen(
     var useSatellite by remember { mutableStateOf(false) }
 
     val standardTileSource = remember {
-        object : OnlineTileSourceBase("GoogleMaps", 1, 20, 256, ".png", arrayOf("https://mt0.google.com/vt/lyrs=m&hl=id&z=", "https://mt1.google.com/vt/lyrs=m&hl=id&z=", "https://mt2.google.com/vt/lyrs=m&hl=id&z=", "https://mt3.google.com/vt/lyrs=m&hl=id&z=")) {
+        object : OnlineTileSourceBase("GoogleMaps", 1, 20, 256, ".png", arrayOf("https://mt0.google.com/vt/lyrs=p&hl=id&scale=2&z=", "https://mt1.google.com/vt/lyrs=p&hl=id&scale=2&z=", "https://mt2.google.com/vt/lyrs=p&hl=id&scale=2&z=", "https://mt3.google.com/vt/lyrs=p&hl=id&scale=2&z=")) {
             override fun getTileURLString(pMapTileIndex: Long): String = baseUrl + MapTileIndex.getZoom(pMapTileIndex) + "&x=" + MapTileIndex.getX(pMapTileIndex) + "&y=" + MapTileIndex.getY(pMapTileIndex)
         }
     }
     val satelliteTileSource = remember {
-        object : OnlineTileSourceBase("GoogleSatellite", 1, 20, 256, ".png", arrayOf("https://mt0.google.com/vt/lyrs=s&hl=id&z=", "https://mt1.google.com/vt/lyrs=s&hl=id&z=", "https://mt2.google.com/vt/lyrs=s&hl=id&z=", "https://mt3.google.com/vt/lyrs=s&hl=id&z=")) {
+        object : OnlineTileSourceBase("GoogleSatellite", 1, 20, 256, ".png", arrayOf("https://mt0.google.com/vt/lyrs=s&hl=id&scale=2&z=", "https://mt1.google.com/vt/lyrs=s&hl=id&scale=2&z=", "https://mt2.google.com/vt/lyrs=s&hl=id&scale=2&z=", "https://mt3.google.com/vt/lyrs=s&hl=id&scale=2&z=")) {
             override fun getTileURLString(pMapTileIndex: Long): String = baseUrl + MapTileIndex.getZoom(pMapTileIndex) + "&x=" + MapTileIndex.getX(pMapTileIndex) + "&y=" + MapTileIndex.getY(pMapTileIndex)
         }
     }
@@ -180,6 +180,15 @@ fun TrackingScreen(
                     for (location in result.locations) {
                         val geoPoint = GeoPoint(location.latitude, location.longitude)
                         lastKnownGeoPoint = geoPoint
+                        
+                        if (location.hasBearing()) {
+                            userMarker?.rotation = -location.bearing // OSMDroid rotates clockwise, bearing is East of North, so we might need positive rotation. Let's use location.bearing.
+                            // Actually, standard OSMDroid rotation is clockwise. Android bearing is also clockwise from North.
+                            userMarker?.rotation = -location.bearing // wait, if standard is clockwise, rotation should be positive. Let's just use location.bearing
+                            // Wait! In OSMDroid, MapView rotation is counter-clockwise, Marker rotation is clockwise? 
+                            // Standard OSMDroid: positive rotation means clockwise. Bearing is also clockwise.
+                            userMarker?.rotation = location.bearing
+                        }
                         
                         if (isRunning) { 
                             val currentRoute = TrackingManager.routePoints.value
@@ -279,6 +288,8 @@ fun TrackingScreen(
                         if (userMarker == null) {
                             userMarker = Marker(map)
                             userMarker?.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                            // Allow marker to be rotated smoothly
+                            userMarker?.isFlat = true
                             userMarker?.icon = com.example.pantaujompo.core.util.MapUtils.createCustomMarkerDrawable(context)
                         }
                         userMarker?.position = lastKnownGeoPoint
@@ -488,6 +499,11 @@ fun TrackingScreen(
                         onClick = {
                             TrackingManager.startTracking(jenis)
                             LocationServiceController.start(context)
+                            lastKnownGeoPoint?.let {
+                                mapView.controller.animateTo(it)
+                                mapView.controller.setZoom(20.0) // Zoom super dekat (mengerecut)
+                            }
+                            isMapCenteredOnUser = true
                         },
                         modifier = Modifier.fillMaxWidth().height(64.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = jenisColor),
