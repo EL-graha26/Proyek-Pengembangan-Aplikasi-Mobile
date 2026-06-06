@@ -189,7 +189,7 @@ fun RiwayatListView(
                 ) {
                     Column {
                         Text("Statistik", color = textPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 28.sp)
-                        Text("Riwayat & Pencapaian", color = textSecondary, fontSize = 13.sp)
+                        Text("Riwayat & Pencapaian", color = accentColor, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                     }
                 }
                 Spacer(modifier = Modifier.height(24.dp))

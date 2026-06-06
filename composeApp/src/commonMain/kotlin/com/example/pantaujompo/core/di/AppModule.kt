@@ -8,6 +8,7 @@ import com.example.pantaujompo.data.local.datastore.UserPreferences
 import com.example.pantaujompo.data.local.datastore.create
 import com.example.pantaujompo.data.remote.api.GeminiService
 import com.example.pantaujompo.data.remote.api.WeatherService
+import com.example.pantaujompo.data.remote.api.NewsService
 import com.example.pantaujompo.data.repository.ActivityRepositoryImpl
 import com.example.pantaujompo.domain.repository.ActivityRepository
 
@@ -34,6 +35,7 @@ val networkModule = module {
     single { HttpClientFactory.create(enableLogging = true) }
     singleOf(::GeminiService)
     singleOf(::WeatherService)
+    singleOf(::NewsService)
 }
 
 // ==================== DATABASE MODULE ====================

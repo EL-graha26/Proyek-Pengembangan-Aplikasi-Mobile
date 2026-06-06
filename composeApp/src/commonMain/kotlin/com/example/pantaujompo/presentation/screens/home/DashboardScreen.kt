@@ -145,7 +145,8 @@ fun DashboardScreen(
     fun fetchWeather() {
         if (!locationFetched) {
             try {
-                fusedLocationClient.getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, null).addOnCompleteListener { task ->
+                // Menggunakan BALANCED_POWER_ACCURACY (Sinyal WiFi/BTS) agar super cepat dan tidak menunggu satelit GPS
+                fusedLocationClient.getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_BALANCED_POWER_ACCURACY, null).addOnCompleteListener { task ->
                     val loc = if (task.isSuccessful) task.result else null
                     coroutineScope.launch {
                         try {
@@ -252,6 +253,7 @@ fun DashboardScreen(
                 Spacer(modifier = Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(greeting, color = textSecondary, fontSize = 13.sp)
+                    
                     Text(
                         if (userName.isNotBlank()) userName else str("pengguna"),
                         color = textPrimary,
@@ -260,6 +262,11 @@ fun DashboardScreen(
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
+                    
+                    if (weatherInfo != null) {
+                        val iconWeather = if (weatherInfo!!.weatherCode <= 3) "☀️" else if (weatherInfo!!.weatherCode <= 69) "🌧️" else "☁️"
+                        Text("$iconWeather ${weatherInfo!!.temperature}°C", color = textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    }
                 }
                 
                 Box(
@@ -366,62 +373,7 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // ==================== WEATHER WIDGET ====================
-            if (weatherInfo != null) {
-                val isBadAqi = weatherInfo!!.aqi >= 60
-                val aqiColor = if (isBadAqi) Color(0xFFFF9100) else Color(0xFF00E676)
-                val aqiText = if (isBadAqi) "Kurang Sehat" else "Baik"
-                val iconWeather = if (weatherInfo!!.weatherCode <= 3) "☀️" else if (weatherInfo!!.weatherCode <= 69) "🌧️" else "☁️"
-                
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(surfaceVariant.copy(alpha = 0.25f))
-                        .border(1.dp, aqiColor.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
-                        .padding(horizontal = 16.dp, vertical = 14.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(iconWeather, fontSize = 24.sp)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("${weatherInfo!!.temperature}°C", color = textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        }
-                        
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("AQI: $aqiText", color = textPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(aqiColor))
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        locationName, 
-                        color = textSecondary, 
-                        fontSize = 11.sp,
-                        modifier = Modifier.padding(start = 36.dp) // Align under the temperature text
-                    )
-                }
-                Spacer(modifier = Modifier.height(24.dp))
-            } else {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(surfaceVariant.copy(alpha = 0.3f))
-                        .padding(horizontal = 16.dp, vertical = 18.dp),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text("📍 Mencari lokasi dan cuaca...", color = textSecondary, fontSize = 13.sp)
-                }
-                Spacer(modifier = Modifier.height(24.dp))
-            }
+            // Widget Cuaca telah dihapus dan dipindahkan ke Header (Minimalist View)
 
             // ==================== STATS ROW ====================
             Text(

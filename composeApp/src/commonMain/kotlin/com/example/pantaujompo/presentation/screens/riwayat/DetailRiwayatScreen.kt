@@ -225,16 +225,15 @@ fun DetailRiwayatScreen(
                     }
                     
                     var showDeleteConfirm by remember { mutableStateOf(false) }
-                    OutlinedButton(
+                    Button(
                         onClick = { showDeleteConfirm = true },
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFF5252)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF5252).copy(0.5f))
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF3B30)) // Solid red
                     ) {
-                        Icon(Icons.Default.DeleteForever, null, tint = Color(0xFFFF5252), modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.DeleteForever, null, tint = Color.White, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("HAPUS RIWAYAT INI", color = Color(0xFFFF5252), fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        Text("HAPUS RIWAYAT INI", color = Color.White, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     }
 
                     if (showDeleteConfirm) {
